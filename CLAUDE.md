@@ -18,9 +18,10 @@ Travel group expense splitting app — snap receipts, claim items, settle up.
   - Supabase Storage (receipt images)
   - PostgREST (auto-generated REST API)
   - Edge Functions (receipt processing pipeline)
-- **Receipt processing:** Google Document AI (OCR) → OpenAI GPT-5 (structuring)
+- **Receipt processing:** Google Document AI (OCR) → OpenAI GPT-5.2 (structuring)
 - **Currency:** Open Exchange Rates API (daily cached rates)
 - **Hosting:** Railway (all services)
+- **Railway project:** `determined-courage` (ID: `1d5323eb-c1e6-441e-99a6-bd7fbd49313c`)
 
 ## Architecture Decisions
 
@@ -33,12 +34,14 @@ Travel group expense splitting app — snap receipts, claim items, settle up.
 
 These must be set as Railway service variables, never committed to code:
 
-- `GOOGLE_CLOUD_API_KEY` — Document AI
-- `OPENAI_API_KEY` — GPT-5 for receipt structuring
-- `OPEN_EXCHANGE_RATES_KEY` — currency conversion
-- `SUPABASE_JWT_SECRET` — auto-generated during Supabase deploy
-- `SUPABASE_ANON_KEY` — auto-generated
-- `SUPABASE_SERVICE_ROLE_KEY` — auto-generated
+Set on Railway `api` service (production environment). **Never commit these to code.**
+
+- `GOOGLE_CLOUD_API_KEY` — Google Document AI (set)
+- `OPENAI_API_KEY` — OpenAI GPT-5.2 for receipt structuring (set)
+- `OPEN_EXCHANGE_RATES_APP_ID` — currency conversion (set)
+- `SUPABASE_JWT_SECRET` — to be generated during Supabase deploy
+- `SUPABASE_ANON_KEY` — to be generated during Supabase deploy
+- `SUPABASE_SERVICE_ROLE_KEY` — to be generated during Supabase deploy
 
 ## Code Conventions
 
@@ -50,7 +53,7 @@ These must be set as Railway service variables, never committed to code:
 
 ## Key Flows
 
-1. **Receipt processing:** Photo → Supabase Storage → Edge Function → Document AI OCR → GPT-5 structuring → DB write → Realtime push
+1. **Receipt processing:** Photo → Supabase Storage → Edge Function → Document AI OCR → GPT-5.2 structuring → DB write → Realtime push
 2. **Claiming:** Push notification → open receipt → tap checkboxes → debts auto-calculated
 3. **Settlement:** View debts → mark as settled (or future: in-app payment)
 
