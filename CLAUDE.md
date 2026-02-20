@@ -43,6 +43,12 @@ Set on Railway `api` service (production environment). **Never commit these to c
 - `SUPABASE_ANON_KEY` — to be generated during Supabase deploy
 - `SUPABASE_SERVICE_ROLE_KEY` — to be generated during Supabase deploy
 
+## UI/Frontend
+
+- Use the `frontend-design` skill for all UI work — distinctive, production-grade interfaces
+- Avoid generic AI aesthetics — aim for polished, creative design
+- Follow Expo/React Native best practices for component structure
+
 ## Code Conventions
 
 - Use TypeScript throughout (Expo app and Edge Functions)
