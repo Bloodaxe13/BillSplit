@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase';
 import { exchangeGoogleToken, signInWithApple, signOut as authSignOut } from '../lib/auth';
 import type { Profile } from '../types/database';
 
-const GOOGLE_CLIENT_ID = '990033290733-ta4v65o97oh7r6rhfer2sjpaonjnbhl3.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '990033290733-ta4v65o97oh7r6rhfer2sjpaonjnbhl3.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '990033290733-dkvnuj6q8m61haeag45cmgf9sg8nbga6.apps.googleusercontent.com';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -47,7 +48,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Google OAuth via expo-auth-session (works in Expo Go)
   const [_googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
+    clientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
   });
 
   // Handle Google auth response when it arrives
