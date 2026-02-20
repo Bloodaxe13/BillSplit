@@ -10,7 +10,6 @@ interface TaxBreakdownProps {
 /** Format a tax rate as a human-readable percentage. */
 function formatRate(rate: number): string {
   const pct = rate * 100;
-  // Trim trailing zeros: 7.000 -> 7, 10.5 -> 10.5
   return `${parseFloat(pct.toFixed(2))}%`;
 }
 
@@ -46,7 +45,6 @@ function buildFeeLines(
     lines.push({ label: 'Tip', amount: receipt.tip });
   }
 
-  // Pick up any extra fee entries in tax_structure
   if (ts) {
     for (const [key, entry] of Object.entries(ts)) {
       if (key === 'service_fee' || key === 'tax' || !entry) continue;
@@ -56,13 +54,10 @@ function buildFeeLines(
       const label = entry.rate
         ? `${niceName} (${formatRate(entry.rate)})`
         : niceName;
-      // We don't have a separate column for arbitrary fees, so skip the amount
-      // unless it's reflected elsewhere. Just surface the label for transparency.
       lines.push({ label, amount: 0 });
     }
   }
 
-  // Filter out zero-amount extra entries
   return lines.filter((l) => l.amount > 0);
 }
 
@@ -74,27 +69,32 @@ export function TaxBreakdown({ receipt }: TaxBreakdownProps) {
     <View style={styles.container}>
       <Text style={styles.title}>Breakdown</Text>
 
-      <View style={styles.row}>
-        <Text style={styles.label}>Subtotal</Text>
-        <Text style={styles.value}>
-          {formatCurrency(receipt.subtotal, currency)}
-        </Text>
-      </View>
-
-      {feeLines.map((line, i) => (
-        <View style={styles.row} key={i}>
-          <Text style={styles.label}>{line.label}</Text>
+      <View style={styles.table}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Subtotal</Text>
           <Text style={styles.value}>
-            {formatCurrency(line.amount, currency)}
+            {formatCurrency(receipt.subtotal, currency)}
           </Text>
         </View>
-      ))}
 
-      <View style={[styles.row, styles.totalRow]}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>
-          {formatCurrency(receipt.total, currency)}
-        </Text>
+        {feeLines.map((line, i) => (
+          <View style={styles.row} key={i}>
+            <Text style={styles.label}>{line.label}</Text>
+            <Text style={styles.value}>
+              {formatCurrency(line.amount, currency)}
+            </Text>
+          </View>
+        ))}
+
+        {/* Green divider line */}
+        <View style={styles.greenDivider} />
+
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>
+            {formatCurrency(receipt.total, currency)}
+          </Text>
+        </View>
       </View>
 
       {receipt.subtotal > 0 && receipt.total > receipt.subtotal && (
@@ -109,47 +109,58 @@ export function TaxBreakdown({ receipt }: TaxBreakdownProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   title: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 14,
+    letterSpacing: 0.8,
+    marginBottom: 16,
+  },
+  table: {
+    gap: 0,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   label: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
   },
   value: {
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
+  greenDivider: {
+    height: 2,
+    backgroundColor: Colors.accent,
+    borderRadius: 1,
+    marginTop: 10,
+    marginBottom: 4,
+  },
   totalRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.divider,
-    marginTop: 8,
-    paddingTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.textPrimary,
     fontVariant: ['tabular-nums'],

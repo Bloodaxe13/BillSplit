@@ -1,12 +1,8 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from 'react-native-reanimated';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Colors } from '../../src/constants/colors';
 import { formatCurrency } from '../../src/services/currency';
@@ -41,10 +37,9 @@ export default function ReceiptDetailScreen() {
 
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // Is the current user the payer?
   const isPayer = receipt && myMemberId === receipt.paid_by;
 
-  // ── Data loading ──────────────────────────────────────────
+  // -- Data loading ----------------------------------------------------------
 
   const loadData = useCallback(async () => {
     if (!receiptId) return;
@@ -76,13 +71,12 @@ export default function ReceiptDetailScreen() {
     loadData();
   }, [loadData]);
 
-  // ── Realtime subscription ─────────────────────────────────
+  // -- Realtime subscription -------------------------------------------------
 
   useEffect(() => {
     if (!receiptId) return;
 
     channelRef.current = subscribeToClaimChanges(receiptId, () => {
-      // Re-fetch on any claim change
       loadData();
     });
 
@@ -93,7 +87,7 @@ export default function ReceiptDetailScreen() {
     };
   }, [receiptId, loadData]);
 
-  // ── Claim toggling ────────────────────────────────────────
+  // -- Claim toggling --------------------------------------------------------
 
   const handleToggleClaim = useCallback(
     async (lineItemId: string, currentlyClaimed: boolean) => {
@@ -105,17 +99,15 @@ export default function ReceiptDetailScreen() {
         } else {
           await createClaim(lineItemId, myMemberId);
         }
-        // Optimistic: realtime will trigger a full refresh, but also reload now
         await loadData();
       } catch (e) {
-        // Reload to reset state on error
         await loadData();
       }
     },
     [myMemberId, loadData]
   );
 
-  // ── Payer assignment ──────────────────────────────────────
+  // -- Payer assignment ------------------------------------------------------
 
   const handleAssign = useCallback(
     async (lineItemId: string, memberId: string) => {
@@ -142,11 +134,10 @@ export default function ReceiptDetailScreen() {
   );
 
   const handleNudge = useCallback(() => {
-    // Nudge is Tier 2 — for now just show an alert concept
-    // In production this would send push notifications to unclaimed-item members
+    // Nudge is Tier 2
   }, []);
 
-  // ── Derived values ────────────────────────────────────────
+  // -- Derived values --------------------------------------------------------
 
   const claimedCount = receipt
     ? receipt.line_items.filter((li) => li.claims.length > 0).length
@@ -163,19 +154,26 @@ export default function ReceiptDetailScreen() {
     ? members.find((m) => m.id === receipt.paid_by)
     : null;
 
-  // ── Animated progress bar ─────────────────────────────────
+  // -- Animated progress bar -------------------------------------------------
 
-  const progressWidth = useSharedValue(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progressWidth.value = withTiming(claimProgress, { duration: 400 });
-  }, [claimProgress, progressWidth]);
+    Animated.timing(progressAnim, {
+      toValue: claimProgress,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+  }, [claimProgress, progressAnim]);
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value * 100}%`,
-  }));
+  const progressStyle = {
+    width: progressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0%', '100%'],
+    }),
+  };
 
-  // ── Loading / error states ────────────────────────────────
+  // -- Loading / error states ------------------------------------------------
 
   if (isLoading) {
     return (
@@ -193,14 +191,22 @@ export default function ReceiptDetailScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
+            <Ionicons name="chevron-back" size={22} color={Colors.accent} />
+            <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Receipt</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color={Colors.negative} />
           <Text style={styles.errorText}>{error ?? 'Receipt not found'}</Text>
-          <Pressable style={styles.retryButton} onPress={loadData}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.retryButtonPressed,
+            ]}
+            onPress={loadData}
+          >
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -222,16 +228,25 @@ export default function ReceiptDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
+          <Ionicons name="chevron-back" size={22} color={Colors.accent} />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Receipt</Text>
         {isPayer ? (
           <Pressable
-            style={styles.viewToggle}
+            style={({ pressed }) => [
+              styles.viewToggle,
+              pressed && styles.viewTogglePressed,
+            ]}
             onPress={() =>
               setViewMode((v) => (v === 'claim' ? 'assign' : 'claim'))
             }
           >
+            <Ionicons
+              name={viewMode === 'claim' ? 'people-outline' : 'hand-left-outline'}
+              size={16}
+              color={Colors.accent}
+            />
             <Text style={styles.viewToggleText}>
               {viewMode === 'claim' ? 'Assign' : 'Claim'}
             </Text>
@@ -245,32 +260,43 @@ export default function ReceiptDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Receipt summary card with TaxBreakdown */}
-        <View style={styles.summarySection}>
-          <View style={styles.summaryHeader}>
+        {/* Receipt summary card */}
+        <View style={styles.receiptCard}>
+          {/* Decorative receipt-style dashed top edge */}
+          <View style={styles.receiptDashes} />
+
+          <View style={styles.summarySection}>
             <Text style={styles.restaurantName}>
               {receipt.description ?? 'Receipt'}
             </Text>
             <Text style={styles.receiptDate}>{dateStr}</Text>
+
+            {payerMember && (
+              <View style={styles.paidByRow}>
+                <Ionicons name="wallet-outline" size={14} color={Colors.accent} />
+                <Text style={styles.paidBy}>
+                  Paid by {payerMember.id === myMemberId ? 'You' : payerMember.display_name}
+                </Text>
+              </View>
+            )}
           </View>
 
           <TaxBreakdown receipt={receipt} />
-
-          {payerMember && (
-            <Text style={styles.paidBy}>
-              Paid by {payerMember.id === myMemberId ? 'You' : payerMember.display_name}
-            </Text>
-          )}
         </View>
 
         {/* Claiming progress */}
         <View style={styles.claimStatus}>
+          <View style={styles.claimStatusHeader}>
+            <Text style={styles.claimStatusText}>
+              {claimedCount} of {totalItems} items claimed
+            </Text>
+            <Text style={styles.claimStatusPercent}>
+              {totalItems > 0 ? Math.round(claimProgress * 100) : 0}%
+            </Text>
+          </View>
           <View style={styles.claimStatusBar}>
             <Animated.View style={[styles.claimStatusFill, progressStyle]} />
           </View>
-          <Text style={styles.claimStatusText}>
-            {claimedCount} of {totalItems} items claimed
-          </Text>
         </View>
 
         {/* View modes */}
@@ -335,32 +361,34 @@ export default function ReceiptDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    gap: 12,
   },
   loadingText: {
     fontSize: 15,
     color: Colors.textSecondary,
-    marginTop: 16,
   },
   errorText: {
     fontSize: 15,
     color: Colors.negative,
     textAlign: 'center',
-    marginBottom: 16,
   },
   retryButton: {
     backgroundColor: Colors.surfaceSecondary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  retryButtonPressed: {
+    backgroundColor: Colors.surfaceTertiary,
   },
   retryText: {
     fontSize: 15,
@@ -368,17 +396,23 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
 
-  // ── Header ──────────────────────────────────────────────
+  // -- Header ----------------------------------------------------------------
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
     paddingVertical: 4,
-    minWidth: 60,
+    minWidth: 70,
   },
   backButtonText: {
     fontSize: 17,
@@ -391,17 +425,21 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   headerSpacer: {
-    minWidth: 60,
+    minWidth: 70,
   },
   viewToggle: {
-    backgroundColor: Colors.surfaceSecondary,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    minWidth: 60,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.accentSurface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 70,
+    justifyContent: 'center',
+  },
+  viewTogglePressed: {
+    backgroundColor: Colors.surfaceSecondary,
   },
   viewToggleText: {
     fontSize: 14,
@@ -409,29 +447,54 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
 
-  // ── Scroll ──────────────────────────────────────────────
+  // -- Scroll ----------------------------------------------------------------
   scrollContent: {
     paddingBottom: 120,
   },
 
-  // ── Summary ─────────────────────────────────────────────
-  summarySection: {
-    marginHorizontal: 20,
+  // -- Receipt card ----------------------------------------------------------
+  receiptCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
     marginBottom: 16,
-    gap: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+    // Subtle shadow for card lift
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  summaryHeader: {
-    marginBottom: 4,
+  receiptDashes: {
+    height: 0,
+    borderTopWidth: 2,
+    borderTopColor: Colors.border,
+    borderStyle: 'dashed' as any,
+    marginHorizontal: -20,
+    marginTop: -20,
+    marginBottom: 0,
+    borderRadius: 0,
+  },
+  summarySection: {
+    gap: 4,
   },
   restaurantName: {
     fontSize: 22,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 4,
   },
   receiptDate: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
+  },
+  paidByRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
   },
   paidBy: {
     fontSize: 14,
@@ -439,36 +502,50 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Claim progress ──────────────────────────────────────
+  // -- Claim progress --------------------------------------------------------
   claimStatus: {
-    marginHorizontal: 20,
-    marginBottom: 24,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 16,
   },
-  claimStatusBar: {
-    height: 6,
-    backgroundColor: Colors.surfaceTertiary,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  claimStatusFill: {
-    height: '100%',
-    backgroundColor: Colors.accent,
-    borderRadius: 3,
+  claimStatusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   claimStatusText: {
     fontSize: 13,
     color: Colors.textSecondary,
     fontWeight: '500',
   },
+  claimStatusPercent: {
+    fontSize: 13,
+    color: Colors.accent,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  claimStatusBar: {
+    height: 6,
+    backgroundColor: Colors.surfaceTertiary,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  claimStatusFill: {
+    height: '100%',
+    backgroundColor: Colors.accent,
+    borderRadius: 3,
+  },
 
-  // ── Sections ────────────────────────────────────────────
+  // -- Sections --------------------------------------------------------------
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 4,
   },
@@ -478,21 +555,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   lineItemsList: {
-    gap: 2,
+    gap: 4,
   },
 
-  // ── Sticky footer ───────────────────────────────────────
+  // -- Sticky footer ---------------------------------------------------------
   shareFooter: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.surfacePrimary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 34, // safe area bottom
+    paddingBottom: 34,
+    // Top shadow
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   shareFooterInner: {
     flexDirection: 'row',
@@ -512,7 +593,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   shareAmount: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: Colors.accent,
     fontVariant: ['tabular-nums'],

@@ -45,10 +45,8 @@ export function LineItemRow({
   const isClaimed = !!myClaim;
   const claimCount = item.claims.length;
 
-  // Build member name lookup
   const memberMap = new Map(members.map((m) => [m.id, m]));
 
-  // Claimant names for subtitle
   const claimantNames = item.claims
     .map((c) => {
       const member = memberMap.get(c.group_member_id);
@@ -62,6 +60,7 @@ export function LineItemRow({
     <Pressable
       style={({ pressed }) => [
         styles.row,
+        isClaimed && styles.rowClaimed,
         pressed && styles.rowPressed,
       ]}
       onPress={() => onToggleClaim(item.id, isClaimed)}
@@ -73,10 +72,13 @@ export function LineItemRow({
 
       <View style={styles.content}>
         <View style={styles.topLine}>
-          <Text style={styles.description} numberOfLines={1}>
+          <Text
+            style={[styles.description, isClaimed && styles.descriptionClaimed]}
+            numberOfLines={1}
+          >
             {item.description}
           </Text>
-          <Text style={styles.price}>
+          <Text style={[styles.price, isClaimed && styles.priceClaimed]}>
             {formatCurrency(item.total_price, currency)}
           </Text>
         </View>
@@ -84,7 +86,6 @@ export function LineItemRow({
         <View style={styles.bottomLine}>
           {claimCount > 0 ? (
             <View style={styles.claimants}>
-              {/* Avatar circles */}
               <View style={styles.avatarRow}>
                 {item.claims.slice(0, 4).map((claim, index) => {
                   const member = memberMap.get(claim.group_member_id);
@@ -104,12 +105,7 @@ export function LineItemRow({
                         },
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.avatarText,
-                          isMe && styles.avatarTextMe,
-                        ]}
-                      >
+                      <Text style={styles.avatarText}>
                         {getInitials(name)}
                       </Text>
                     </View>
@@ -132,7 +128,6 @@ export function LineItemRow({
             <Text style={styles.unclaimed}>Unclaimed</Text>
           )}
 
-          {/* Quantity badge when item.quantity > 1 */}
           {item.quantity > 1 && (
             <View style={styles.quantityBadge}>
               <Text style={styles.quantityText}>x{item.quantity}</Text>
@@ -149,14 +144,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
     gap: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.divider,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+  },
+  rowClaimed: {
+    backgroundColor: Colors.accentSurface,
   },
   rowPressed: {
     backgroundColor: Colors.surfacePrimary,
-    borderRadius: 10,
   },
   content: {
     flex: 1,
@@ -169,15 +166,22 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
+    fontWeight: '500',
     color: Colors.textPrimary,
     flex: 1,
     marginRight: 12,
   },
+  descriptionClaimed: {
+    color: Colors.textPrimary,
+  },
   price: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
+  },
+  priceClaimed: {
+    color: Colors.accent,
   },
   bottomLine: {
     flexDirection: 'row',
@@ -195,27 +199,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: Colors.background,
   },
   avatarText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
     color: Colors.white,
-  },
-  avatarTextMe: {
-    color: Colors.textInverse,
   },
   avatarOverflow: {
     backgroundColor: Colors.surfaceTertiary,
   },
   avatarOverflowText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '700',
     color: Colors.textSecondary,
   },
@@ -227,10 +228,9 @@ const styles = StyleSheet.create({
   unclaimed: {
     fontSize: 13,
     color: Colors.textTertiary,
-    fontStyle: 'italic',
   },
   quantityBadge: {
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: Colors.surfaceSecondary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,

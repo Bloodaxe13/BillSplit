@@ -43,10 +43,10 @@ export default function LoginScreen() {
         {/* Branding */}
         <View style={styles.brandingSection}>
           <View style={styles.logoContainer}>
-            <Ionicons name="receipt-outline" size={48} color={Colors.accent} />
+            <Ionicons name="receipt-outline" size={44} color={Colors.accent} />
           </View>
           <Text style={styles.appName}>BillSplit</Text>
-          <Text style={styles.tagline}>Split receipts, not friendships.</Text>
+          <Text style={styles.tagline}>Split bills. Not friendships.</Text>
         </View>
 
         {/* Error message */}
@@ -63,7 +63,7 @@ export default function LoginScreen() {
             style={({ pressed }) => [
               styles.authButton,
               styles.googleButton,
-              pressed && styles.authButtonPressed,
+              pressed && styles.googleButtonPressed,
               isLoading && styles.authButtonDisabled,
             ]}
             onPress={handleGoogleSignIn}
@@ -73,8 +73,8 @@ export default function LoginScreen() {
               <ActivityIndicator size="small" color={Colors.textPrimary} />
             ) : (
               <>
-                <Ionicons name="logo-google" size={22} color={Colors.textPrimary} />
-                <Text style={styles.authButtonText}>Continue with Google</Text>
+                <Ionicons name="logo-google" size={20} color="#4285F4" />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
               </>
             )}
           </Pressable>
@@ -84,18 +84,18 @@ export default function LoginScreen() {
               style={({ pressed }) => [
                 styles.authButton,
                 styles.appleButton,
-                pressed && styles.authButtonPressed,
+                pressed && styles.appleButtonPressed,
                 isLoading && styles.authButtonDisabled,
               ]}
               onPress={handleAppleSignIn}
               disabled={isLoading}
             >
               {isAppleLoading ? (
-                <ActivityIndicator size="small" color={Colors.textPrimary} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="logo-apple" size={22} color={Colors.textPrimary} />
-                  <Text style={styles.authButtonText}>Continue with Apple</Text>
+                  <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+                  <Text style={styles.appleButtonText}>Continue with Apple</Text>
                 </>
               )}
             </Pressable>
@@ -118,40 +118,39 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     justifyContent: 'center',
   },
   brandingSection: {
     alignItems: 'center',
-    marginBottom: 56,
+    marginBottom: 64,
   },
   logoContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
+    width: 80,
+    height: 80,
+    borderRadius: 22,
     backgroundColor: Colors.accentSurface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: Colors.accent,
+    marginBottom: 28,
   },
   appName: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: Colors.accent,
-    letterSpacing: -1,
+    fontSize: 36,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    letterSpacing: -0.8,
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.textSecondary,
-    letterSpacing: 0.2,
+    fontWeight: '400',
+    letterSpacing: 0.1,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 82, 82, 0.10)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
@@ -171,35 +170,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
-    paddingVertical: 16,
+    height: 56,
     gap: 12,
-    borderWidth: 1,
   },
   googleButton: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
     borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonPressed: {
+    backgroundColor: Colors.surfacePrimary,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.textPrimary,
   },
   appleButton: {
-    backgroundColor: Colors.surfacePrimary,
-    borderColor: Colors.border,
+    backgroundColor: '#000000',
   },
-  authButtonPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+  appleButtonPressed: {
+    backgroundColor: '#1A1A1A',
+  },
+  appleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
   authButtonDisabled: {
     opacity: 0.5,
   },
-  authButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-  },
   terms: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textTertiary,
     textAlign: 'center',
-    marginTop: 32,
+    marginTop: 36,
     lineHeight: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
 });

@@ -41,7 +41,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <AuthGate>
         <Stack
           screenOptions={{

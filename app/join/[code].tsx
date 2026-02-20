@@ -7,9 +7,11 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../src/constants/colors';
 import { useAuth } from '../../src/contexts/AuthContext';
 import {
@@ -132,12 +134,12 @@ export default function JoinGroupScreen() {
             style={styles.closeButton}
             onPress={() => router.back()}
           >
-            <Text style={styles.closeButtonText}>{'\u00D7'}</Text>
+            <Ionicons name="close" size={20} color={Colors.textSecondary} />
           </Pressable>
 
           <View style={styles.joinCard}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>?</Text>
+            <View style={[styles.iconContainer, styles.iconContainerError]}>
+              <Ionicons name="help" size={28} color={Colors.negative} />
             </View>
             <Text style={styles.heading}>Invalid Invite</Text>
             <Text style={styles.subheading}>
@@ -166,30 +168,31 @@ export default function JoinGroupScreen() {
           style={styles.closeButton}
           onPress={() => router.back()}
         >
-          <Text style={styles.closeButtonText}>{'\u00D7'}</Text>
+          <Ionicons name="close" size={20} color={Colors.textSecondary} />
         </Pressable>
 
         <View style={styles.joinCard}>
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{'\uD83D\uDC65'}</Text>
+            <Ionicons name="people" size={28} color={Colors.accent} />
           </View>
 
-          <Text style={styles.heading}>Join Group</Text>
+          <Text style={styles.heading}>{group?.name}</Text>
           <Text style={styles.subheading}>
-            {"You've been invited to join a group on BillSplit."}
+            {"You've been invited to join this group on BillSplit."}
           </Text>
-
-          <View style={styles.codeContainer}>
-            <Text style={styles.codeLabel}>Invite code</Text>
-            <Text style={styles.codeValue}>{code ?? '--------'}</Text>
-          </View>
 
           {/* Group preview */}
           <View style={styles.groupPreview}>
-            <Text style={styles.groupPreviewName}>{group?.name}</Text>
-            <Text style={styles.groupPreviewMembers}>
-              {members.length} {members.length === 1 ? 'member' : 'members'}
-            </Text>
+            <View style={styles.groupPreviewRow}>
+              <Ionicons name="people-outline" size={16} color={Colors.textSecondary} />
+              <Text style={styles.groupPreviewMembers}>
+                {members.length} {members.length === 1 ? 'member' : 'members'}
+              </Text>
+            </View>
+            <View style={styles.groupPreviewRow}>
+              <Ionicons name="key-outline" size={14} color={Colors.textTertiary} />
+              <Text style={styles.codeValue}>{code ?? '--------'}</Text>
+            </View>
           </View>
 
           {alreadyMember ? (
@@ -302,7 +305,7 @@ export default function JoinGroupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   content: {
     flex: 1,
@@ -327,18 +330,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-  closeButtonText: {
-    fontSize: 20,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-  },
   joinCard: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   iconContainer: {
     width: 64,
@@ -349,14 +356,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  icon: {
-    fontSize: 32,
+  iconContainerError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
   heading: {
     fontSize: 24,
     fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subheading: {
     fontSize: 15,
@@ -365,42 +373,31 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  codeContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  codeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  codeValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.accent,
-    letterSpacing: 4,
-    fontVariant: ['tabular-nums'],
-  },
   groupPreview: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 12,
     padding: 16,
     width: '100%',
-    alignItems: 'center',
+    gap: 10,
     marginBottom: 24,
   },
-  groupPreviewName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: 4,
+  groupPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   groupPreviewMembers: {
     fontSize: 14,
     color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  codeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.accent,
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
   },
   actions: {
     width: '100%',
@@ -457,9 +454,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   nameInput: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: Colors.textPrimary,
     borderWidth: 1,

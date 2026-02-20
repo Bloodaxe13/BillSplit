@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { Colors } from '../../src/constants/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -74,6 +74,17 @@ const styles = StyleSheet.create({
     height: 88,
     paddingTop: 8,
     paddingBottom: 28,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: -1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   tabBarLabel: {
     fontSize: 11,

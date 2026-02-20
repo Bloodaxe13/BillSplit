@@ -66,6 +66,9 @@ export default function OnboardingScreen() {
   }
 
   const selectedCurrencyLabel = CURRENCIES.find(c => c.code === selectedCurrency)?.label ?? selectedCurrency;
+  const initials = displayName.trim()
+    ? displayName.trim().charAt(0).toUpperCase()
+    : '?';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,13 +83,19 @@ export default function OnboardingScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.welcomeIcon}>
-              <Ionicons name="hand-left-outline" size={36} color={Colors.accent} />
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <Text style={styles.welcomeTitle}>Welcome!</Text>
             <Text style={styles.welcomeSubtitle}>
               Let's get you set up. What should we call you?
             </Text>
+          </View>
+
+          {/* Step indicator */}
+          <View style={styles.stepIndicator}>
+            <View style={[styles.stepDot, styles.stepDotActive]} />
+            <View style={styles.stepDot} />
           </View>
 
           {/* Error */}
@@ -132,32 +141,34 @@ export default function OnboardingScreen() {
 
             {showCurrencyPicker ? (
               <View style={styles.currencyList}>
-                {CURRENCIES.map(currency => (
-                  <Pressable
-                    key={currency.code}
-                    style={({ pressed }) => [
-                      styles.currencyOption,
-                      currency.code === selectedCurrency && styles.currencyOptionSelected,
-                      pressed && styles.currencyOptionPressed,
-                    ]}
-                    onPress={() => {
-                      setSelectedCurrency(currency.code);
-                      setShowCurrencyPicker(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.currencyOptionText,
-                        currency.code === selectedCurrency && styles.currencyOptionTextSelected,
+                <ScrollView nestedScrollEnabled style={styles.currencyScroll}>
+                  {CURRENCIES.map(currency => (
+                    <Pressable
+                      key={currency.code}
+                      style={({ pressed }) => [
+                        styles.currencyOption,
+                        currency.code === selectedCurrency && styles.currencyOptionSelected,
+                        pressed && styles.currencyOptionPressed,
                       ]}
+                      onPress={() => {
+                        setSelectedCurrency(currency.code);
+                        setShowCurrencyPicker(false);
+                      }}
                     >
-                      {currency.label}
-                    </Text>
-                    {currency.code === selectedCurrency ? (
-                      <Ionicons name="checkmark" size={20} color={Colors.accent} />
-                    ) : null}
-                  </Pressable>
-                ))}
+                      <Text
+                        style={[
+                          styles.currencyOptionText,
+                          currency.code === selectedCurrency && styles.currencyOptionTextSelected,
+                        ]}
+                      >
+                        {currency.label}
+                      </Text>
+                      {currency.code === selectedCurrency ? (
+                        <Ionicons name="checkmark" size={20} color={Colors.accent} />
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </View>
             ) : null}
           </View>
@@ -194,26 +205,33 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     justifyContent: 'center',
     paddingVertical: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
-  welcomeIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.accentSurface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: Colors.accent,
   },
   welcomeTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '700',
     color: Colors.textPrimary,
     letterSpacing: -0.5,
     marginBottom: 8,
@@ -223,11 +241,29 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+    fontWeight: '400',
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 32,
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.border,
+  },
+  stepDotActive: {
+    backgroundColor: Colors.accent,
+    width: 24,
+    borderRadius: 4,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 82, 82, 0.10)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
@@ -251,9 +287,9 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     fontSize: 16,
     color: Colors.textPrimary,
     borderWidth: 1,
@@ -264,9 +300,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -279,19 +315,26 @@ const styles = StyleSheet.create({
   },
   currencyList: {
     marginTop: 8,
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
-    maxHeight: 240,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  currencyScroll: {
+    maxHeight: 240,
   },
   currencyOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
   },
@@ -299,7 +342,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentSurface,
   },
   currencyOptionPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
   },
   currencyOptionText: {
     fontSize: 15,
@@ -312,9 +355,15 @@ const styles = StyleSheet.create({
   completeButton: {
     backgroundColor: Colors.accent,
     borderRadius: 14,
-    paddingVertical: 16,
+    height: 56,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   completeButtonPressed: {
     backgroundColor: Colors.accentMuted,
@@ -323,7 +372,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   completeButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.textInverse,
   },

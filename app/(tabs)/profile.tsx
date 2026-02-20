@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -39,9 +40,10 @@ interface SettingsRowProps {
   value?: string;
   onPress?: () => void;
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  rightElement?: React.ReactNode;
 }
 
-function SettingsRow({ label, value, onPress, icon }: SettingsRowProps) {
+function SettingsRow({ label, value, onPress, icon, rightElement }: SettingsRowProps) {
   return (
     <Pressable
       style={({ pressed }) => [
@@ -49,14 +51,23 @@ function SettingsRow({ label, value, onPress, icon }: SettingsRowProps) {
         pressed && onPress ? styles.settingsRowPressed : undefined,
       ]}
       onPress={onPress}
+      disabled={!onPress && !rightElement}
     >
       <View style={styles.settingsRowLeft}>
-        {icon ? <Ionicons name={icon} size={20} color={Colors.textSecondary} style={styles.settingsIcon} /> : null}
+        {icon ? (
+          <View style={styles.settingsIconContainer}>
+            <Ionicons name={icon} size={18} color={Colors.textSecondary} />
+          </View>
+        ) : null}
         <Text style={styles.settingsLabel}>{label}</Text>
       </View>
       <View style={styles.settingsRowRight}>
-        {value ? <Text style={styles.settingsValue}>{value}</Text> : null}
-        {onPress ? <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} /> : null}
+        {rightElement ?? (
+          <>
+            {value ? <Text style={styles.settingsValue}>{value}</Text> : null}
+            {onPress ? <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} /> : null}
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -69,6 +80,7 @@ export default function ProfileScreen() {
   const [editingCurrency, setEditingCurrency] = useState(false);
   const [nameValue, setNameValue] = useState(profile?.display_name ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const displayName = profile?.display_name || user?.user_metadata?.full_name || 'User';
   const email = profile?.email || user?.email || '';
@@ -132,8 +144,9 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
         {/* Avatar + name section */}
@@ -147,7 +160,14 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.profileName}>{displayName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.profileName}>{displayName}</Text>
+            {profile?.is_pro ? (
+              <View style={styles.proPill}>
+                <Text style={styles.proPillText}>Pro</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.profileEmail}>{email}</Text>
         </View>
 
@@ -233,19 +253,10 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {/* Settings section */}
+        {/* Account section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
+          <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.settingsGroup}>
-            <SettingsRow
-              icon="cash-outline"
-              label="Home Currency"
-              value={profile?.home_currency ?? 'AUD'}
-              onPress={() => {
-                setEditingCurrency(true);
-                setEditingName(false);
-              }}
-            />
             <SettingsRow
               icon="person-outline"
               label="Display Name"
@@ -257,9 +268,32 @@ export default function ProfileScreen() {
               }}
             />
             <SettingsRow
+              icon="cash-outline"
+              label="Home Currency"
+              value={profile?.home_currency ?? 'AUD'}
+              onPress={() => {
+                setEditingCurrency(true);
+                setEditingName(false);
+              }}
+            />
+          </View>
+        </View>
+
+        {/* Preferences section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          <View style={styles.settingsGroup}>
+            <SettingsRow
               icon="notifications-outline"
               label="Notifications"
-              value="On"
+              rightElement={
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={setNotificationsEnabled}
+                  trackColor={{ false: Colors.surfaceTertiary, true: Colors.accent }}
+                  thumbColor={Colors.white}
+                />
+              }
             />
           </View>
         </View>
@@ -268,39 +302,37 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.proCard}>
-            <View style={styles.proCardContent}>
-              <View style={styles.proTitleRow}>
-                <Text style={styles.proTitle}>BillSplit Pro</Text>
-                {profile?.is_pro ? (
-                  <View style={styles.proBadge}>
-                    <Text style={styles.proBadgeText}>Active</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={styles.proDescription}>
-                Unlimited scans, debt simplification, analytics, and more.
-              </Text>
-              {!profile?.is_pro ? (
+            <View style={styles.proCardHeader}>
+              <Text style={styles.proTitle}>BillSplit Pro</Text>
+              {profile?.is_pro ? (
+                <View style={styles.proActiveBadge}>
+                  <Text style={styles.proActiveBadgeText}>Active</Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={styles.proDescription}>
+              Unlimited scans, debt simplification, analytics, and more.
+            </Text>
+            {!profile?.is_pro ? (
+              <>
                 <Text style={styles.proScans}>
                   {profile?.scans_this_month ?? 0}/20 scans used this month
                 </Text>
-              ) : null}
-            </View>
-            {!profile?.is_pro ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.proButton,
-                  pressed && styles.proButtonPressed,
-                ]}
-              >
-                <Text style={styles.proButtonText}>Upgrade</Text>
-              </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.proButton,
+                    pressed && styles.proButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.proButtonText}>Upgrade</Text>
+                </Pressable>
+              </>
             ) : null}
           </View>
         </View>
 
         {/* Sign out */}
-        <View style={styles.section}>
+        <View style={styles.signOutSection}>
           <Pressable
             style={({ pressed }) => [
               styles.signOutButton,
@@ -324,7 +356,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -332,9 +364,12 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 8,
+    backgroundColor: Colors.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderLight,
   },
-  title: {
+  headerTitle: {
     fontSize: 32,
     fontWeight: '700',
     color: Colors.textPrimary,
@@ -342,51 +377,70 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingTop: 32,
+    paddingBottom: 24,
+    backgroundColor: Colors.white,
   },
   avatarContainer: {
     marginBottom: 16,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.surfaceTertiary,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.accentSurface,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.accent,
   },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: Colors.accent,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
   },
   avatarInitials: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: Colors.accent,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   profileName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 4,
+  },
+  proPill: {
+    backgroundColor: Colors.accent,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  proPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textInverse,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   profileEmail: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
   },
   editSection: {
     marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: Colors.surfacePrimary,
+    marginTop: 16,
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   editSectionHeader: {
     flexDirection: 'row',
@@ -406,7 +460,7 @@ const styles = StyleSheet.create({
   },
   editInput: {
     flex: 1,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -430,7 +484,7 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
   },
   editCancelButton: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 10,
     paddingHorizontal: 12,
     justifyContent: 'center',
@@ -438,7 +492,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   editCancelButtonPressed: {
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: Colors.surfaceSecondary,
   },
   editCancelButtonText: {
     fontSize: 14,
@@ -454,7 +508,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     gap: 10,
   },
   currencyChipSelected: {
@@ -463,7 +517,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
   },
   currencyChipPressed: {
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: Colors.surfaceSecondary,
   },
   currencyChipCode: {
     fontSize: 15,
@@ -492,14 +546,17 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   settingsGroup: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.white,
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   settingsRow: {
     flexDirection: 'row',
@@ -511,13 +568,19 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.divider,
   },
   settingsRowPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
   },
   settingsRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  settingsIcon: {
+  settingsIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surfacePrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   settingsLabel: {
@@ -530,40 +593,42 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   settingsValue: {
-    fontSize: 16,
-    color: Colors.textSecondary,
+    fontSize: 15,
+    color: Colors.textTertiary,
   },
   proCard: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.accent,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  proCardContent: {
-    marginBottom: 16,
-  },
-  proTitleRow: {
+  proCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   proTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.accent,
+    color: Colors.textPrimary,
   },
-  proBadge: {
-    backgroundColor: Colors.accentSurface,
-    borderRadius: 6,
+  proActiveBadge: {
+    backgroundColor: Colors.accent,
+    borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  proBadgeText: {
-    fontSize: 12,
+  proActiveBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: Colors.accent,
+    color: Colors.textInverse,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   proDescription: {
     fontSize: 14,
@@ -574,6 +639,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textTertiary,
     marginTop: 8,
+    marginBottom: 16,
   },
   proButton: {
     backgroundColor: Colors.accent,
@@ -589,16 +655,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textInverse,
   },
+  signOutSection: {
+    paddingHorizontal: 20,
+    marginTop: 36,
+  },
   signOutButton: {
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   signOutButtonPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+    opacity: 0.6,
   },
   signOutText: {
     fontSize: 16,

@@ -1,21 +1,23 @@
 /**
- * ReceiptCard — card component for receipt list items.
+ * ReceiptCard -- card component for receipt list items.
  *
  * Shows vendor name, total, date, and a processing status indicator
- * with appropriate colors and animations for each state.
+ * with appropriate colors for each state.
  */
 
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 import { formatCurrency } from '../../services/currency';
 import type { Receipt, ReceiptProcessingStatus } from '../../types/database';
 
-// ── Status config ───────────────────────────────────────────
+// -- Status config -----------------------------------------------------------
 
 interface StatusConfig {
   label: string;
   color: string;
+  icon: keyof typeof Ionicons.glyphMap;
   showSpinner: boolean;
 }
 
@@ -23,26 +25,30 @@ const STATUS_MAP: Record<ReceiptProcessingStatus, StatusConfig> = {
   pending: {
     label: 'Queued',
     color: Colors.warning,
+    icon: 'time-outline',
     showSpinner: false,
   },
   processing: {
     label: 'Processing',
     color: Colors.info,
+    icon: 'sync-outline',
     showSpinner: true,
   },
   completed: {
     label: 'Ready',
     color: Colors.positive,
+    icon: 'checkmark-circle-outline',
     showSpinner: false,
   },
   failed: {
     label: 'Failed',
     color: Colors.negative,
+    icon: 'alert-circle-outline',
     showSpinner: false,
   },
 };
 
-// ── Component ───────────────────────────────────────────────
+// -- Component ---------------------------------------------------------------
 
 interface ReceiptCardProps {
   receipt: Receipt;
@@ -66,37 +72,43 @@ export function ReceiptCard({ receipt }: ReceiptCardProps) {
       ]}
       onPress={() => router.push(`/receipt/${receipt.id}`)}
     >
-      <View style={styles.topRow}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.vendorName} numberOfLines={1}>
-            {displayName}
-          </Text>
+      {/* Left accent stripe for processing status */}
+      <View style={[styles.statusStripe, { backgroundColor: status.color }]} />
+
+      <View style={styles.cardContent}>
+        <View style={styles.topRow}>
+          <View style={styles.nameContainer}>
+            <Text style={styles.vendorName} numberOfLines={1}>
+              {displayName}
+            </Text>
+            <Text style={styles.date}>{dateStr}</Text>
+          </View>
+          <Text style={styles.total}>{displayTotal}</Text>
         </View>
-        <Text style={styles.total}>{displayTotal}</Text>
-      </View>
 
-      <View style={styles.bottomRow}>
-        <Text style={styles.date}>{dateStr}</Text>
+        <View style={styles.bottomRow}>
+          <View style={styles.statusBadge}>
+            {status.showSpinner ? (
+              <ActivityIndicator
+                size={12}
+                color={status.color}
+              />
+            ) : (
+              <Ionicons name={status.icon} size={14} color={status.color} />
+            )}
+            <Text style={[styles.statusLabel, { color: status.color }]}>
+              {status.label}
+            </Text>
+          </View>
 
-        <View style={styles.statusBadge}>
-          {status.showSpinner && (
-            <ActivityIndicator
-              size={10}
-              color={status.color}
-              style={styles.statusSpinner}
-            />
-          )}
-          <View style={[styles.statusDot, { backgroundColor: status.color }]} />
-          <Text style={[styles.statusLabel, { color: status.color }]}>
-            {status.label}
-          </Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
         </View>
       </View>
     </Pressable>
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────
+// -- Helpers -----------------------------------------------------------------
 
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
@@ -117,36 +129,49 @@ function formatDate(isoString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-// ── Styles ──────────────────────────────────────────────────
+// -- Styles ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surfacePrimary,
+    flexDirection: 'row',
+    backgroundColor: Colors.background,
     borderRadius: 14,
-    padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: 'hidden',
   },
   cardPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
+  },
+  statusStripe: {
+    width: 4,
+  },
+  cardContent: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
   },
   nameContainer: {
     flex: 1,
     marginRight: 12,
+    gap: 2,
   },
   vendorName: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
+  date: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+  },
   total: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.textPrimary,
     fontVariant: ['tabular-nums'],
@@ -156,25 +181,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  date: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-  },
-  statusSpinner: {
-    marginRight: 2,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    gap: 6,
   },
   statusLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

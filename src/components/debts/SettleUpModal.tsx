@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 import type { DebtWithMembers } from '../../types/database';
 import type { ExchangeRates } from '../../types/currency';
-import { formatDualCurrency } from '../../services/currency';
+import { formatCurrency, formatDualCurrency } from '../../services/currency';
 import { settleDebt } from '../../services/debts';
 
 interface SettleUpModalProps {
@@ -29,9 +29,11 @@ export function SettleUpModal({
 
   if (!debt) return null;
 
-  const amountDisplay = rates
-    ? formatDualCurrency(debt.amount, debt.currency, homeCurrency, rates)
-    : `${debt.amount} ${debt.currency}`;
+  const primaryAmount = formatCurrency(debt.amount, debt.currency);
+  const dualAmount =
+    rates && debt.currency !== homeCurrency
+      ? formatDualCurrency(debt.amount, debt.currency, homeCurrency, rates)
+      : null;
 
   async function handleConfirm() {
     if (!debt) return;
@@ -51,38 +53,46 @@ export function SettleUpModal({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.modal} onPress={() => {}}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Ionicons name="checkmark-done-circle" size={40} color={Colors.accent} />
-            <Text style={styles.title}>Settle Up</Text>
+      <View style={styles.backdrop}>
+        <Pressable style={styles.backdropTouchable} onPress={onClose} />
+        <View style={styles.sheet}>
+          {/* Handle bar */}
+          <View style={styles.handleBar} />
+
+          {/* Title */}
+          <Text style={styles.title}>Settle Up</Text>
+
+          {/* From -> To summary card */}
+          <View style={styles.summaryCard}>
+            <View style={styles.personColumn}>
+              <Text style={styles.personLabel}>From</Text>
+              <Text style={styles.personName} numberOfLines={1}>
+                {debt.from_member_name}
+              </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={Colors.textTertiary} />
+            <View style={styles.personColumn}>
+              <Text style={styles.personLabel}>To</Text>
+              <Text style={styles.personName} numberOfLines={1}>
+                {debt.to_member_name}
+              </Text>
+            </View>
           </View>
 
-          {/* Debt details */}
-          <View style={styles.details}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>From</Text>
-              <Text style={styles.detailValue}>{debt.from_member_name}</Text>
-            </View>
-            <View style={styles.separator} />
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>To</Text>
-              <Text style={styles.detailValue}>{debt.to_member_name}</Text>
-            </View>
-            <View style={styles.separator} />
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Amount</Text>
-              <Text style={styles.detailAmount}>{amountDisplay}</Text>
-            </View>
+          {/* Amount */}
+          <View style={styles.amountSection}>
+            <Text style={styles.amountPrimary}>{primaryAmount}</Text>
+            {dualAmount ? (
+              <Text style={styles.amountDual}>{dualAmount}</Text>
+            ) : null}
           </View>
 
-          {/* Confirmation note */}
+          {/* Info note */}
           <View style={styles.noteContainer}>
-            <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
+            <Ionicons name="information-circle-outline" size={16} color={Colors.textTertiary} />
             <Text style={styles.noteText}>
               This marks the debt as settled. Make sure the payment has been made outside the app.
             </Text>
@@ -94,110 +104,123 @@ export function SettleUpModal({
           ) : null}
 
           {/* Actions */}
-          <View style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.cancelButton,
-                pressed && styles.cancelButtonPressed,
-              ]}
-              onPress={onClose}
-              disabled={settling}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.confirmButton,
+              pressed && styles.confirmButtonPressed,
+              settling && styles.confirmButtonDisabled,
+            ]}
+            onPress={handleConfirm}
+            disabled={settling}
+          >
+            {settling ? (
+              <ActivityIndicator size="small" color={Colors.textInverse} />
+            ) : (
+              <Text style={styles.confirmButtonText}>I've Settled This</Text>
+            )}
+          </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.confirmButton,
-                pressed && styles.confirmButtonPressed,
-                settling && styles.confirmButtonDisabled,
-              ]}
-              onPress={handleConfirm}
-              disabled={settling}
-            >
-              {settling ? (
-                <ActivityIndicator size="small" color={Colors.textInverse} />
-              ) : (
-                <Text style={styles.confirmButtonText}>I've Paid This</Text>
-              )}
-            </Pressable>
-          </View>
-        </Pressable>
-      </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.cancelButtonPressed,
+            ]}
+            onPress={onClose}
+            disabled={settling}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  backdrop: {
     flex: 1,
-    backgroundColor: Colors.scrim,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'flex-end',
   },
-  modal: {
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  backdropTouchable: {
+    flex: 1,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
+  sheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.surfaceTertiary,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginTop: 12,
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  details: {
-    backgroundColor: Colors.surfaceSecondary,
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
+    gap: 12,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+  personColumn: {
+    flex: 1,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.divider,
+  personLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  detailLabel: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  detailValue: {
-    fontSize: 15,
+  personName: {
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
-  detailAmount: {
-    fontSize: 16,
+  amountSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  amountPrimary: {
+    fontSize: 36,
     fontWeight: '700',
-    color: Colors.accent,
+    color: Colors.textPrimary,
+    letterSpacing: -1,
+  },
+  amountDual: {
+    fontSize: 15,
+    color: Colors.textTertiary,
+    marginTop: 4,
   },
   noteContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   noteText: {
     flex: 1,
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
     lineHeight: 18,
   },
   errorText: {
@@ -206,33 +229,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: Colors.surfaceSecondary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cancelButtonPressed: {
-    backgroundColor: Colors.surfaceTertiary,
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
   confirmButton: {
-    flex: 1,
     backgroundColor: Colors.accent,
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
+    marginBottom: 10,
   },
   confirmButtonPressed: {
     backgroundColor: Colors.accentMuted,
@@ -241,8 +243,22 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   confirmButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.textInverse,
+  },
+  cancelButton: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonPressed: {
+    backgroundColor: Colors.surfacePrimary,
+    borderRadius: 14,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textTertiary,
   },
 });

@@ -1,47 +1,46 @@
 /**
- * BillSplit color palette — dark theme with vibrant accents.
+ * BillSplit color palette — light theme, Wise/Revolut style.
  *
- * The palette is designed for high contrast on OLED screens and
- * accessibility-friendly color pairings.
+ * Professional minimal palette with emerald green accent.
  */
 export const Colors = {
   // ── Backgrounds ───────────────────────────────────────────
-  background: '#0A0A0F',
-  surfacePrimary: '#141420',
-  surfaceSecondary: '#1C1C2E',
-  surfaceTertiary: '#252540',
+  background: '#FFFFFF',
+  surfacePrimary: '#F8F9FA',
+  surfaceSecondary: '#F0F2F5',
+  surfaceTertiary: '#E8EAF0',
 
   // ── Text ──────────────────────────────────────────────────
-  textPrimary: '#F0F0F5',
-  textSecondary: '#9A9AB0',
-  textTertiary: '#5C5C73',
-  textInverse: '#0A0A0F',
+  textPrimary: '#1A1A2E',
+  textSecondary: '#4A4A68',
+  textTertiary: '#8A8AA0',
+  textInverse: '#FFFFFF',
 
-  // ── Accent — Split Green ──────────────────────────────────
-  accent: '#00E676',
-  accentMuted: '#00C864',
-  accentSurface: 'rgba(0, 230, 118, 0.10)',
+  // ── Accent — Emerald Green ────────────────────────────────
+  accent: '#10B981',
+  accentMuted: '#059669',
+  accentSurface: 'rgba(16, 185, 129, 0.08)',
 
   // ── Semantic ──────────────────────────────────────────────
-  positive: '#00E676',
-  negative: '#FF5252',
-  warning: '#FFB74D',
-  info: '#448AFF',
+  positive: '#10B981',
+  negative: '#EF4444',
+  warning: '#F59E0B',
+  info: '#3B82F6',
 
   // ── Borders & Dividers ────────────────────────────────────
-  border: '#2A2A42',
-  borderLight: '#1E1E34',
-  divider: '#1A1A2E',
+  border: '#E8E8EE',
+  borderLight: '#F0F0F5',
+  divider: '#F0F2F5',
 
   // ── Tab bar ───────────────────────────────────────────────
-  tabBarBackground: '#0F0F18',
-  tabBarBorder: '#1A1A2E',
-  tabIconDefault: '#5C5C73',
-  tabIconSelected: '#00E676',
+  tabBarBackground: '#FFFFFF',
+  tabBarBorder: '#E8E8EE',
+  tabIconDefault: '#8A8AA0',
+  tabIconSelected: '#10B981',
 
   // ── Overlays ──────────────────────────────────────────────
-  overlay: 'rgba(0, 0, 0, 0.60)',
-  scrim: 'rgba(10, 10, 15, 0.85)',
+  overlay: 'rgba(0, 0, 0, 0.30)',
+  scrim: 'rgba(0, 0, 0, 0.50)',
 
   // ── Misc ──────────────────────────────────────────────────
   white: '#FFFFFF',

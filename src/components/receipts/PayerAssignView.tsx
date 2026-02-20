@@ -1,4 +1,5 @@
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 import { formatCurrency } from '../../services/currency';
 import type {
@@ -48,11 +49,7 @@ export function PayerAssignView({
   const claimedItems = lineItems.filter((li) => li.claims.length > 0);
   const memberMap = new Map(members.map((m) => [m.id, m]));
 
-  // When payer taps an unclaimed item, show member picker
   function handleAssignPress(lineItemId: string) {
-    const options = members.map((m) => m.display_name);
-    options.push('Cancel');
-
     Alert.alert(
       'Assign to member',
       'Who had this item?',
@@ -68,7 +65,12 @@ export function PayerAssignView({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Assign Items</Text>
+        <View>
+          <Text style={styles.title}>Assign Items</Text>
+          <Text style={styles.subtitle}>
+            Tap unclaimed items to assign them
+          </Text>
+        </View>
         {unclaimedItems.length > 0 && (
           <Pressable
             style={({ pressed }) => [
@@ -77,16 +79,13 @@ export function PayerAssignView({
             ]}
             onPress={onNudge}
           >
-            <Text style={styles.nudgeText}>Nudge All</Text>
+            <Ionicons name="notifications-outline" size={14} color={Colors.textInverse} />
+            <Text style={styles.nudgeText}>Nudge</Text>
           </Pressable>
         )}
       </View>
 
-      <Text style={styles.subtitle}>
-        Tap unclaimed items to assign them to group members
-      </Text>
-
-      {/* Member chips */}
+      {/* Member chips — horizontal scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -94,25 +93,14 @@ export function PayerAssignView({
       >
         {members.map((m) => {
           const isMe = m.id === myMemberId;
+          const color = isMe ? Colors.accent : memberColor(m.id);
           return (
             <View
               key={m.id}
-              style={[
-                styles.memberChip,
-                { borderColor: isMe ? Colors.accent : memberColor(m.id) },
-              ]}
+              style={[styles.memberChip, { borderColor: color }]}
             >
-              <View
-                style={[
-                  styles.chipAvatar,
-                  {
-                    backgroundColor: isMe
-                      ? Colors.accent
-                      : memberColor(m.id),
-                  },
-                ]}
-              >
-                <Text style={[styles.chipAvatarText, isMe && styles.chipAvatarTextMe]}>
+              <View style={[styles.chipAvatar, { backgroundColor: color }]}>
+                <Text style={styles.chipAvatarText}>
                   {getInitials(m.display_name)}
                 </Text>
               </View>
@@ -148,7 +136,10 @@ export function PayerAssignView({
                   {formatCurrency(item.total_price, currency)}
                 </Text>
               </View>
-              <Text style={styles.assignAction}>Assign</Text>
+              <View style={styles.assignActionBadge}>
+                <Text style={styles.assignActionText}>Assign</Text>
+                <Ionicons name="add-circle-outline" size={14} color={Colors.accent} />
+              </View>
             </Pressable>
           ))}
         </View>
@@ -175,31 +166,19 @@ export function PayerAssignView({
                   const member = memberMap.get(claim.group_member_id);
                   if (!member) return null;
                   const isMe = claim.group_member_id === myMemberId;
+                  const color = isMe ? Colors.accent : memberColor(claim.group_member_id);
                   return (
                     <Pressable
                       key={claim.id}
                       style={[
                         styles.claimantChip,
-                        {
-                          backgroundColor: isMe
-                            ? Colors.accentSurface
-                            : `${memberColor(claim.group_member_id)}20`,
-                        },
+                        { backgroundColor: `${color}14` },
                       ]}
                       onLongPress={() =>
                         onUnassign(item.id, claim.group_member_id)
                       }
                     >
-                      <Text
-                        style={[
-                          styles.claimantChipText,
-                          {
-                            color: isMe
-                              ? Colors.accent
-                              : memberColor(claim.group_member_id),
-                          },
-                        ]}
-                      >
+                      <Text style={[styles.claimantChipText, { color }]}>
                         {isMe
                           ? 'You'
                           : member.display_name.split(' ')[0]}
@@ -218,28 +197,31 @@ export function PayerAssignView({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 16,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.textPrimary,
+    marginBottom: 2,
   },
   subtitle: {
     fontSize: 14,
     color: Colors.textTertiary,
-    marginTop: -4,
   },
   nudgeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: Colors.warning,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   nudgeButtonPressed: {
     opacity: 0.8,
@@ -256,31 +238,28 @@ const styles = StyleSheet.create({
   memberChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 20,
-    paddingRight: 12,
-    paddingLeft: 3,
-    paddingVertical: 3,
-    borderWidth: 1,
+    gap: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 24,
+    paddingRight: 14,
+    paddingLeft: 4,
+    paddingVertical: 4,
+    borderWidth: 1.5,
   },
   chipAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   chipAvatarText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.white,
   },
-  chipAvatarTextMe: {
-    color: Colors.textInverse,
-  },
   chipName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.textPrimary,
     maxWidth: 80,
@@ -294,31 +273,32 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 6,
-    marginTop: 8,
+    marginBottom: 8,
   },
   assignRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.divider,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    marginBottom: 6,
   },
   assignRowUnclaimed: {
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.warning,
-    paddingLeft: 12,
+    borderColor: Colors.warning,
+    borderStyle: 'dashed' as any,
   },
   assignRowPressed: {
     backgroundColor: Colors.surfacePrimary,
-    borderRadius: 8,
   },
   assignContent: {
     flex: 1,
   },
   assignDescription: {
     fontSize: 15,
+    fontWeight: '500',
     color: Colors.textPrimary,
     marginBottom: 2,
   },
@@ -327,11 +307,16 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
-  assignAction: {
+  assignActionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 12,
+  },
+  assignActionText: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.accent,
-    marginLeft: 12,
   },
   assignClaimants: {
     flexDirection: 'row',
@@ -341,9 +326,9 @@ const styles = StyleSheet.create({
     maxWidth: 160,
   },
   claimantChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   claimantChipText: {
     fontSize: 12,

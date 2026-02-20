@@ -11,15 +11,16 @@ interface GroupBalanceSummaryProps {
 }
 
 export function GroupBalanceSummary({ balances, homeCurrency, rates }: GroupBalanceSummaryProps) {
-  // Sort: creditors first (positive), then debtors (negative)
   const sorted = [...balances]
     .filter((b) => b.net_amount !== 0)
     .sort((a, b) => b.net_amount - a.net_amount);
 
+  const maxAbs = sorted.reduce((max, b) => Math.max(max, Math.abs(b.net_amount)), 0);
+
   if (sorted.length === 0) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Balances</Text>
+      <View style={styles.card}>
+        <Text style={styles.heading}>Balances</Text>
         <View style={styles.settledState}>
           <Text style={styles.settledText}>All settled up!</Text>
         </View>
@@ -28,28 +29,53 @@ export function GroupBalanceSummary({ balances, homeCurrency, rates }: GroupBala
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Balances</Text>
-      {sorted.map((balance) => {
+    <View style={styles.card}>
+      <Text style={styles.heading}>Balances</Text>
+      {sorted.map((balance, index) => {
         const isPositive = balance.net_amount > 0;
         const absAmount = Math.abs(balance.net_amount);
-        const amountDisplay = rates
-          ? formatDualCurrency(absAmount, balance.currency, homeCurrency, rates)
-          : formatCurrency(absAmount, balance.currency);
+        const barWidth = maxAbs > 0 ? (absAmount / maxAbs) * 100 : 0;
+        const color = isPositive ? Colors.positive : Colors.negative;
+        const amountDisplay = formatCurrency(absAmount, balance.currency);
+        const dualDisplay =
+          rates && balance.currency !== homeCurrency
+            ? formatDualCurrency(absAmount, balance.currency, homeCurrency, rates)
+            : null;
 
         return (
-          <View key={balance.member_id} style={styles.row}>
-            <View style={styles.memberInfo}>
-              <View style={[styles.indicator, { backgroundColor: isPositive ? Colors.positive : Colors.negative }]} />
-              <Text style={styles.memberName}>{balance.display_name}</Text>
+          <View
+            key={balance.member_id}
+            style={[styles.row, index < sorted.length - 1 && styles.rowBorder]}
+          >
+            <View style={styles.rowTop}>
+              <Text style={styles.memberName} numberOfLines={1}>
+                {balance.display_name}
+              </Text>
+              <Text style={[styles.amount, { color }]}>
+                {isPositive ? '+' : '-'}{amountDisplay}
+              </Text>
             </View>
-            <View style={styles.amountInfo}>
-              <Text style={[styles.amountLabel, { color: isPositive ? Colors.positive : Colors.negative }]}>
+
+            {/* Bar */}
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.max(barWidth, 4)}%`,
+                    backgroundColor: isPositive ? Colors.positive : Colors.negative,
+                  },
+                ]}
+              />
+            </View>
+
+            <View style={styles.rowBottom}>
+              <Text style={[styles.statusLabel, { color }]}>
                 {isPositive ? 'is owed' : 'owes'}
               </Text>
-              <Text style={[styles.amount, { color: isPositive ? Colors.positive : Colors.negative }]}>
-                {amountDisplay}
-              </Text>
+              {dualDisplay ? (
+                <Text style={styles.dualAmount}>{dualDisplay}</Text>
+              ) : null}
             </View>
           </View>
         );
@@ -59,14 +85,17 @@ export function GroupBalanceSummary({ balances, homeCurrency, rates }: GroupBala
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.surfacePrimary,
+  card: {
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  title: {
+  heading: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.textTertiary,
@@ -84,41 +113,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 10,
+  },
+  rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
   },
-  memberInfo: {
+  rowTop: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    flex: 1,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 10,
+    marginBottom: 6,
   },
   memberName: {
     fontSize: 15,
     color: Colors.textPrimary,
     fontWeight: '500',
+    flex: 1,
+    marginRight: 12,
   },
-  amountInfo: {
-    alignItems: 'flex-end',
+  amount: {
+    fontSize: 15,
+    fontWeight: '700',
   },
-  amountLabel: {
+  barTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.surfaceSecondary,
+    marginBottom: 4,
+  },
+  barFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+  rowBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusLabel: {
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 2,
   },
-  amount: {
-    fontSize: 14,
-    fontWeight: '700',
+  dualAmount: {
+    fontSize: 12,
+    color: Colors.textTertiary,
   },
 });

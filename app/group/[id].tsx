@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   Share,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../src/constants/colors';
 import { useAuth } from '../../src/contexts/AuthContext';
 import {
@@ -75,7 +77,6 @@ export default function GroupDetailScreen() {
   useEffect(() => {
     if (!id) return;
     const channel = subscribeToGroupMembers(id, () => {
-      // Reload members and balances when membership changes
       fetchGroupMembers(id).then(setMembers).catch(() => {});
       fetchGroupBalances(id).then(setBalances).catch(() => {});
     });
@@ -113,7 +114,8 @@ export default function GroupDetailScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
+            <Ionicons name="chevron-back" size={22} color={Colors.accent} />
+            <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
         </View>
         <View style={styles.loadingContainer}>
@@ -128,21 +130,26 @@ export default function GroupDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
+          <Ionicons name="chevron-back" size={22} color={Colors.accent} />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
-        <View style={styles.headerRight}>
-          <Pressable style={styles.inviteButton} onPress={handleShareInvite}>
-            <Text style={styles.inviteButtonText}>Invite</Text>
-          </Pressable>
-        </View>
+        <Pressable style={styles.inviteButton} onPress={handleShareInvite}>
+          <Ionicons name="person-add-outline" size={16} color={Colors.accent} />
+          <Text style={styles.inviteButtonText}>Invite</Text>
+        </Pressable>
       </View>
 
       {/* Group info */}
       <View style={styles.groupInfo}>
         <Text style={styles.groupName}>{group.name}</Text>
-        <Text style={styles.groupSubtitle}>
-          {members.length} {members.length === 1 ? 'member' : 'members'}  {group.default_currency}
-        </Text>
+        <View style={styles.groupMeta}>
+          <Ionicons name="people-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.groupSubtitle}>
+            {members.length} {members.length === 1 ? 'member' : 'members'}
+          </Text>
+          <View style={styles.metaDot} />
+          <Text style={styles.groupSubtitle}>{group.default_currency}</Text>
+        </View>
       </View>
 
       {/* Balance summary */}
@@ -167,18 +174,18 @@ export default function GroupDetailScreen() {
         </Text>
       </View>
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
+      {/* Segmented control tab bar */}
+      <View style={styles.segmentedControl}>
         {(['receipts', 'members', 'balances'] as const).map((tab) => (
           <Pressable
             key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
+            style={styles.segmentTab}
             onPress={() => setActiveTab(tab)}
           >
             <Text
               style={[
-                styles.tabText,
-                activeTab === tab && styles.tabTextActive,
+                styles.segmentTabText,
+                activeTab === tab && styles.segmentTabTextActive,
               ]}
             >
               {tab === 'receipts'
@@ -187,6 +194,7 @@ export default function GroupDetailScreen() {
                   ? `Members (${members.length})`
                   : 'Balances'}
             </Text>
+            {activeTab === tab && <View style={styles.segmentIndicator} />}
           </Pressable>
         ))}
       </View>
@@ -202,7 +210,8 @@ export default function GroupDetailScreen() {
               ]}
               onPress={() => router.push('/(tabs)/scan')}
             >
-              <Text style={styles.addReceiptText}>+ Add Receipt</Text>
+              <Ionicons name="add" size={16} color={Colors.textInverse} />
+              <Text style={styles.addReceiptText}>Add Receipt</Text>
             </Pressable>
           </View>
 
@@ -228,6 +237,7 @@ export default function GroupDetailScreen() {
             }
             ListEmptyComponent={
               <View style={styles.emptyTab}>
+                <Ionicons name="receipt-outline" size={32} color={Colors.textTertiary} />
                 <Text style={styles.emptyTabText}>No receipts yet</Text>
                 <Text style={styles.emptyTabSubtext}>
                   Add a receipt to start splitting expenses.
@@ -278,6 +288,7 @@ export default function GroupDetailScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyTab}>
+              <Ionicons name="wallet-outline" size={32} color={Colors.textTertiary} />
               <Text style={styles.emptyTabText}>No balances</Text>
               <Text style={styles.emptyTabSubtext}>
                 Balances will appear once receipts are claimed.
@@ -290,7 +301,7 @@ export default function GroupDetailScreen() {
   );
 }
 
-// ── Sub-components ──────────────────────────────────────────
+// -- Sub-components -------------------------------------------------------
 
 interface ReceiptCardProps {
   receipt: Receipt;
@@ -335,7 +346,16 @@ function ReceiptCard({ receipt, members, currency }: ReceiptCardProps) {
                 : styles.statusPending,
           ]}
         >
-          <Text style={styles.statusText}>{receipt.processing_status}</Text>
+          <Text
+            style={[
+              styles.statusText,
+              receipt.processing_status === 'completed' && { color: Colors.positive },
+              receipt.processing_status === 'failed' && { color: Colors.negative },
+              receipt.processing_status === 'pending' && { color: Colors.warning },
+            ]}
+          >
+            {receipt.processing_status}
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -411,7 +431,7 @@ function BalanceRow({ balance }: BalanceRowProps) {
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────
+// -- Helpers --------------------------------------------------------------
 
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -428,12 +448,12 @@ function formatTimeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-// ── Styles ──────────────────────────────────────────────────
+// -- Styles ---------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   loadingContainer: {
     flex: 1,
@@ -444,10 +464,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: Colors.background,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
     paddingVertical: 4,
   },
   backButtonText: {
@@ -455,17 +479,14 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     fontWeight: '500',
   },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 12,
-  },
   inviteButton: {
-    backgroundColor: Colors.surfaceSecondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.accentSurface,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   inviteButtonText: {
     fontSize: 14,
@@ -473,28 +494,53 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   groupInfo: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 16,
+    backgroundColor: Colors.background,
   },
   groupName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: Colors.textPrimary,
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  groupMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   groupSubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
   },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.textTertiary,
+  },
+
+  // Balance card
   balanceCard: {
-    marginHorizontal: 20,
-    backgroundColor: Colors.surfacePrimary,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   balanceLabel: {
     fontSize: 13,
@@ -509,31 +555,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Tab bar
-  tabBar: {
+  // Segmented control (green underline style)
+  segmentedControl: {
     flexDirection: 'row',
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
-    padding: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
   },
-  tab: {
+  segmentTab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    position: 'relative',
   },
-  tabActive: {
-    backgroundColor: Colors.surfaceTertiary,
-  },
-  tabText: {
+  segmentTabText: {
     fontSize: 13,
     fontWeight: '600',
     color: Colors.textTertiary,
   },
-  tabTextActive: {
-    color: Colors.textPrimary,
+  segmentTabTextActive: {
+    color: Colors.accent,
+  },
+  segmentIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 16,
+    right: 16,
+    height: 2,
+    backgroundColor: Colors.accent,
+    borderRadius: 1,
   },
 
   // Section header
@@ -541,41 +592,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
   addReceiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: Colors.accent,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   addReceiptButtonPressed: {
     backgroundColor: Colors.accentMuted,
   },
   addReceiptText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.textInverse,
   },
 
   // Lists
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
     gap: 12,
   },
 
   // Receipt card
   receiptCard: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   receiptCardPressed: {
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.surfacePrimary,
   },
   receiptHeader: {
     flexDirection: 'row',
@@ -617,13 +680,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusCompleted: {
-    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    backgroundColor: 'rgba(16, 185, 129, 0.10)',
   },
   statusFailed: {
-    backgroundColor: 'rgba(255, 82, 82, 0.12)',
+    backgroundColor: 'rgba(239, 68, 68, 0.10)',
   },
   statusPending: {
-    backgroundColor: 'rgba(255, 183, 77, 0.12)',
+    backgroundColor: 'rgba(245, 158, 11, 0.10)',
   },
   statusText: {
     fontSize: 11,
@@ -636,17 +699,26 @@ const styles = StyleSheet.create({
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   memberAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: Colors.accentSurface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -654,7 +726,7 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: Colors.accent,
   },
   memberInfo: {
     flex: 1,
@@ -691,11 +763,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   balanceRowName: {
     fontSize: 15,
@@ -710,14 +791,14 @@ const styles = StyleSheet.create({
   // Empty states
   emptyTab: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 48,
     paddingHorizontal: 32,
+    gap: 8,
   },
   emptyTabText: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textSecondary,
-    marginBottom: 4,
   },
   emptyTabSubtext: {
     fontSize: 14,

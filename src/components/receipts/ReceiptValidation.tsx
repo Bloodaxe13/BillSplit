@@ -1,8 +1,8 @@
 /**
- * ReceiptValidation — validation step after OCR processing.
+ * ReceiptValidation -- validation step after OCR processing.
  *
- * Shows the receipt image side-by-side with the extracted total so the
- * payer can confirm the amounts match before claiming opens for the group.
+ * Shows the receipt image on top with extracted totals below in a clean card
+ * so the payer can confirm amounts before claiming opens for the group.
  */
 
 import { useState, useEffect } from 'react';
@@ -17,12 +17,13 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 import { formatCurrency } from '../../services/currency';
 import { getReceiptImageUrl, confirmReceiptTotal } from '../../services/receipts';
 import type { Receipt } from '../../types/database';
 
-// ── Component ───────────────────────────────────────────────
+// -- Component ---------------------------------------------------------------
 
 interface ReceiptValidationProps {
   receipt: Receipt;
@@ -71,7 +72,6 @@ export function ReceiptValidation({
           setIsConfirming(false);
           return;
         }
-        // Convert to minor units — for simplicity, assume input is in major units
         const decimals = currency === 'JPY' || currency === 'KRW' || currency === 'IDR' || currency === 'VND' ? 0 : 2;
         finalTotal = decimals === 0 ? Math.round(parsed) : Math.round(parsed * 100);
       }
@@ -94,7 +94,7 @@ export function ReceiptValidation({
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Receipt image */}
+      {/* Receipt image — top area */}
       <View style={styles.imageContainer}>
         {imageUrl ? (
           <Image
@@ -104,15 +104,18 @@ export function ReceiptValidation({
           />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <ActivityIndicator color={Colors.textTertiary} />
+            <Ionicons name="receipt-outline" size={32} color={Colors.textTertiary} />
             <Text style={styles.imagePlaceholderText}>Loading image...</Text>
           </View>
         )}
       </View>
 
-      {/* Extracted data */}
+      {/* Extracted data card */}
       <View style={styles.dataCard}>
-        <Text style={styles.cardTitle}>Extracted totals</Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="scan-outline" size={18} color={Colors.accent} />
+          <Text style={styles.cardTitle}>Extracted totals</Text>
+        </View>
         <Text style={styles.cardSubtitle}>
           Verify these match your receipt
         </Text>
@@ -148,7 +151,10 @@ export function ReceiptValidation({
           </View>
         )}
 
-        <View style={[styles.dataRow, styles.totalRow]}>
+        {/* Green divider before total */}
+        <View style={styles.greenDivider} />
+
+        <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           {isEditing ? (
             <TextInput
@@ -168,28 +174,33 @@ export function ReceiptValidation({
 
       {/* Actions */}
       <View style={styles.actions}>
-        {!isEditing ? (
-          <Pressable
-            style={styles.editButton}
-            onPress={() => {
-              setIsEditing(true);
-              setEditedTotal('');
-            }}
-          >
-            <Text style={styles.editButtonText}>Total doesn't match?</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            style={styles.editButton}
-            onPress={() => {
+        {/* Edit toggle */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.editButton,
+            pressed && styles.editButtonPressed,
+          ]}
+          onPress={() => {
+            if (isEditing) {
               setIsEditing(false);
               setEditedTotal('');
-            }}
-          >
-            <Text style={styles.editButtonText}>Use extracted total</Text>
-          </Pressable>
-        )}
+            } else {
+              setIsEditing(true);
+              setEditedTotal('');
+            }
+          }}
+        >
+          <Ionicons
+            name={isEditing ? 'close-outline' : 'create-outline'}
+            size={18}
+            color={Colors.accent}
+          />
+          <Text style={styles.editButtonText}>
+            {isEditing ? 'Use extracted total' : 'Edit total'}
+          </Text>
+        </Pressable>
 
+        {/* Confirm — solid green */}
         <Pressable
           style={({ pressed }) => [
             styles.confirmButton,
@@ -202,12 +213,14 @@ export function ReceiptValidation({
           {isConfirming ? (
             <ActivityIndicator color={Colors.textInverse} size="small" />
           ) : (
-            <Text style={styles.confirmButtonText}>
-              Confirm & open for claiming
-            </Text>
+            <>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.textInverse} />
+              <Text style={styles.confirmButtonText}>Confirm</Text>
+            </>
           )}
         </Pressable>
 
+        {/* Cancel */}
         <Pressable style={styles.cancelButton} onPress={onCancel}>
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </Pressable>
@@ -216,7 +229,7 @@ export function ReceiptValidation({
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────
+// -- Styles ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -238,10 +251,10 @@ const styles = StyleSheet.create({
   },
   receiptImage: {
     width: '100%',
-    height: 300,
+    height: 280,
   },
   imagePlaceholder: {
-    height: 200,
+    height: 180,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 12,
@@ -252,18 +265,23 @@ const styles = StyleSheet.create({
   },
   dataCard: {
     marginHorizontal: 20,
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: 24,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 14,
@@ -278,18 +296,25 @@ const styles = StyleSheet.create({
   },
   dataLabel: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
   },
   dataValue: {
     fontSize: 15,
-    color: Colors.textPrimary,
+    color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
+  greenDivider: {
+    height: 2,
+    backgroundColor: Colors.accent,
+    borderRadius: 1,
+    marginTop: 10,
+    marginBottom: 4,
+  },
   totalRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.divider,
-    marginTop: 8,
-    paddingTop: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
   totalLabel: {
     fontSize: 17,
@@ -299,7 +324,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 17,
     fontWeight: '700',
-    color: Colors.accent,
+    color: Colors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   totalInput: {
@@ -319,20 +344,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   editButton: {
-    alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.background,
+  },
+  editButtonPressed: {
+    backgroundColor: Colors.accentSurface,
   },
   editButtonText: {
-    fontSize: 14,
-    color: Colors.info,
+    fontSize: 15,
+    color: Colors.accent,
     fontWeight: '600',
   },
   confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: Colors.accent,
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
   },
   confirmButtonPressed: {
     backgroundColor: Colors.accentMuted,

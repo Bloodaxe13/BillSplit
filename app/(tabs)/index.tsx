@@ -9,6 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../src/constants/colors';
 import { GroupCard } from '../../src/components/groups/GroupCard';
 import { CreateGroupModal } from '../../src/components/groups/CreateGroupModal';
@@ -50,7 +51,6 @@ export default function HomeScreen() {
   }
 
   function handleGroupCreated(_group: Group) {
-    // Reload the list to include the new group
     loadGroups();
   }
 
@@ -58,7 +58,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Groups</Text>
+          <Text style={styles.title}>Your Groups</Text>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.accent} />
@@ -70,7 +70,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Groups</Text>
+        <Text style={styles.title}>Your Groups</Text>
         <Pressable
           style={({ pressed }) => [
             styles.newGroupButton,
@@ -78,7 +78,7 @@ export default function HomeScreen() {
           ]}
           onPress={() => setShowCreateModal(true)}
         >
-          <Text style={styles.newGroupButtonText}>+ New</Text>
+          <Ionicons name="add" size={20} color={Colors.textInverse} />
         </Pressable>
       </View>
 
@@ -98,6 +98,9 @@ export default function HomeScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="people-outline" size={40} color={Colors.textTertiary} />
+            </View>
             <Text style={styles.emptyTitle}>No groups yet</Text>
             <Text style={styles.emptySubtitle}>
               Create a group to start splitting bills with friends.
@@ -127,35 +130,33 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
+    backgroundColor: Colors.background,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: Colors.textPrimary,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   newGroupButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.accent,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   newGroupButtonPressed: {
     backgroundColor: Colors.accentMuted,
-  },
-  newGroupButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textInverse,
   },
   loadingContainer: {
     flex: 1,
@@ -163,14 +164,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
     gap: 12,
   },
   emptyState: {
     alignItems: 'center',
     paddingTop: 80,
     paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 20,
@@ -188,7 +199,7 @@ const styles = StyleSheet.create({
   emptyButton: {
     backgroundColor: Colors.accent,
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
   },
   emptyButtonPressed: {

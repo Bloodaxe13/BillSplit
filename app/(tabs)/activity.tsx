@@ -16,6 +16,7 @@ interface DebtWithGroup extends DebtWithMembers {
 
 interface DebtSection {
   title: string;
+  type: 'owe' | 'owed';
   data: DebtWithGroup[];
 }
 
@@ -89,7 +90,7 @@ export default function ActivityScreen() {
     loadData();
   }, [loadData]);
 
-  // Split debts into "You owe" and "Owed to you" sections, grouped by group
+  // Split debts into "You owe" and "Owed to you" sections
   const sections = buildSections(debts, myMemberIds);
 
   if (loading) {
@@ -116,7 +117,14 @@ export default function ActivityScreen() {
         keyExtractor={(item) => item.id}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text
+              style={[
+                styles.sectionTitle,
+                section.type === 'owe' ? styles.sectionTitleOwe : styles.sectionTitleOwed,
+              ]}
+            >
+              {section.title}
+            </Text>
           </View>
         )}
         renderItem={({ item }) => (
@@ -141,6 +149,9 @@ export default function ActivityScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Text style={styles.emptyIconText}>0</Text>
+            </View>
             <Text style={styles.emptyTitle}>All settled up</Text>
             <Text style={styles.emptySubtitle}>
               No outstanding debts. Scan a receipt to get started.
@@ -148,6 +159,7 @@ export default function ActivityScreen() {
           </View>
         }
         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+        SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
       />
 
       <SettleUpModal
@@ -181,32 +193,14 @@ function buildSections(
     }
   }
 
-  // Group debts by group name within each section
-  const groupByGroup = (items: DebtWithGroup[]) => {
-    const groups = new Map<string, DebtWithGroup[]>();
-    for (const item of items) {
-      const name = item._group_name ?? 'Unknown';
-      const existing = groups.get(name) ?? [];
-      existing.push(item);
-      groups.set(name, existing);
-    }
-    return groups;
-  };
-
   const sections: DebtSection[] = [];
 
   if (youOwe.length > 0) {
-    const grouped = groupByGroup(youOwe);
-    for (const [groupName, items] of grouped) {
-      sections.push({ title: `You owe — ${groupName}`, data: items });
-    }
+    sections.push({ title: 'You owe', type: 'owe', data: youOwe });
   }
 
   if (owedToYou.length > 0) {
-    const grouped = groupByGroup(owedToYou);
-    for (const [groupName, items] of grouped) {
-      sections.push({ title: `Owed to you — ${groupName}`, data: items });
-    }
+    sections.push({ title: 'Owed to you', type: 'owed', data: owedToYou });
   }
 
   return sections;
@@ -215,12 +209,15 @@ function buildSections(
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfacePrimary,
   },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 8,
+    backgroundColor: Colors.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderLight,
   },
   title: {
     fontSize: 32,
@@ -234,27 +231,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionHeader: {
-    paddingTop: 16,
+    paddingTop: 20,
     paddingBottom: 10,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  sectionTitleOwe: {
+    color: Colors.negative,
+  },
+  sectionTitleOwed: {
+    color: Colors.positive,
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   itemSeparator: {
     height: 10,
+  },
+  sectionSeparator: {
+    height: 0,
   },
   emptyState: {
     alignItems: 'center',
     paddingTop: 80,
     paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.accentSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyIconText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Colors.accent,
   },
   emptyTitle: {
     fontSize: 20,

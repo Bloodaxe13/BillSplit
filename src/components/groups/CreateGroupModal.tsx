@@ -11,6 +11,7 @@ import {
   Share,
   Alert,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 import { CURRENCIES } from '../../services/currency';
 import { createGroup, buildInviteLink } from '../../services/groups';
@@ -92,6 +93,11 @@ export function CreateGroupModal({
       onRequestClose={handleClose}
     >
       <View style={styles.container}>
+        {/* Drag handle */}
+        <View style={styles.dragHandleRow}>
+          <View style={styles.dragHandle} />
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={handleClose} style={styles.closeButton}>
@@ -132,9 +138,11 @@ export function CreateGroupModal({
                     ? `${selectedCurrencyInfo.symbol} ${selectedCurrencyInfo.code} - ${selectedCurrencyInfo.name}`
                     : currency}
                 </Text>
-                <Text style={styles.currencyChevron}>
-                  {showCurrencyPicker ? '\u25B2' : '\u25BC'}
-                </Text>
+                <Ionicons
+                  name={showCurrencyPicker ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={Colors.textTertiary}
+                />
               </Pressable>
 
               {showCurrencyPicker && (
@@ -164,6 +172,9 @@ export function CreateGroupModal({
                       >
                         {c.symbol} {c.code} - {c.name}
                       </Text>
+                      {c.code === currency && (
+                        <Ionicons name="checkmark" size={18} color={Colors.accent} />
+                      )}
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -183,7 +194,7 @@ export function CreateGroupModal({
               {isCreating ? (
                 <ActivityIndicator color={Colors.textInverse} />
               ) : (
-                <Text style={styles.createButtonText}>Create Group</Text>
+                <Text style={styles.createButtonText}>Create</Text>
               )}
             </Pressable>
           </View>
@@ -191,7 +202,7 @@ export function CreateGroupModal({
           /* Success step */
           <View style={styles.successContainer}>
             <View style={styles.successIcon}>
-              <Text style={styles.successIconText}>{'\u2713'}</Text>
+              <Ionicons name="checkmark" size={36} color={Colors.accent} />
             </View>
 
             <Text style={styles.successTitle}>{createdGroup?.name}</Text>
@@ -215,6 +226,7 @@ export function CreateGroupModal({
               ]}
               onPress={handleShareInvite}
             >
+              <Ionicons name="share-outline" size={18} color={Colors.textInverse} style={{ marginRight: 8 }} />
               <Text style={styles.shareButtonText}>Share Invite Link</Text>
             </Pressable>
 
@@ -240,12 +252,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  dragHandleRow: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.surfaceTertiary,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
@@ -264,7 +287,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   form: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 24,
   },
   field: {
@@ -279,18 +302,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: Colors.textPrimary,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   currencySelector: {
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -301,13 +326,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textPrimary,
   },
-  currencyChevron: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-  },
   currencyList: {
     maxHeight: 240,
-    backgroundColor: Colors.surfacePrimary,
+    backgroundColor: Colors.background,
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
@@ -318,6 +339,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   currencyOptionSelected: {
     backgroundColor: Colors.accentSurface,
@@ -363,11 +387,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  successIconText: {
-    fontSize: 36,
-    color: Colors.accent,
-    fontWeight: '700',
-  },
   successTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -411,6 +430,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     width: '100%',
     marginBottom: 12,
   },

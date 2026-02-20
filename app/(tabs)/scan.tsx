@@ -1,5 +1,5 @@
 /**
- * Scan tab — camera capture for receipt photos.
+ * Scan tab -- camera capture for receipt photos.
  *
  * States: permission request -> camera live view -> photo preview
  *         -> upload progress -> success/error.
@@ -27,7 +27,7 @@ import { uploadReceipt, subscribeToReceiptStatus } from '../../src/services/rece
 import { enqueue, getPendingCount } from '../../src/services/offline-queue';
 import { useAuth } from '../../src/contexts/AuthContext';
 
-// ── Types ───────────────────────────────────────────────────
+// -- Types -------------------------------------------------------------------
 
 type ScreenState =
   | 'camera'
@@ -37,7 +37,7 @@ type ScreenState =
   | 'success'
   | 'error';
 
-// ── Screen ──────────────────────────────────────────────────
+// -- Screen ------------------------------------------------------------------
 
 export default function ScanScreen() {
   const { user } = useAuth();
@@ -51,12 +51,11 @@ export default function ScanScreen() {
   const [queueCount, setQueueCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Check queue count on mount
   useEffect(() => {
     getPendingCount().then(setQueueCount).catch(() => {});
   }, []);
 
-  // ── Camera capture ──────────────────────────────────────
+  // -- Camera capture --------------------------------------------------------
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -73,7 +72,7 @@ export default function ScanScreen() {
     }
   }, []);
 
-  // ── Gallery pick ────────────────────────────────────────
+  // -- Gallery pick ----------------------------------------------------------
 
   const pickFromGallery = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,7 +86,7 @@ export default function ScanScreen() {
     }
   }, []);
 
-  // ── Retake ──────────────────────────────────────────────
+  // -- Retake ----------------------------------------------------------------
 
   const retake = useCallback(() => {
     setPhotoUri(null);
@@ -96,14 +95,11 @@ export default function ScanScreen() {
     setErrorMessage(null);
   }, []);
 
-  // ── Upload ──────────────────────────────────────────────
+  // -- Upload ----------------------------------------------------------------
 
   const handleUpload = useCallback(async () => {
     if (!photoUri) return;
 
-    // TODO: In production, the user picks a group from a list.
-    // For now, we need a group_id and paid_by. This will be wired up
-    // when group selection is integrated.
     const groupId = 'PLACEHOLDER_GROUP_ID';
     const paidBy = 'PLACEHOLDER_MEMBER_ID';
 
@@ -121,7 +117,6 @@ export default function ScanScreen() {
       setReceiptId(id);
       setState('processing');
 
-      // Subscribe to processing status
       const unsubscribe = subscribeToReceiptStatus(id, (status) => {
         if (status === 'completed') {
           setState('success');
@@ -133,12 +128,10 @@ export default function ScanScreen() {
         }
       });
 
-      // Timeout fallback
       setTimeout(() => {
         unsubscribe();
       }, 60_000);
     } catch (err) {
-      // If upload fails, try queueing offline
       try {
         await enqueue({
           localUri: photoUri,
@@ -160,7 +153,7 @@ export default function ScanScreen() {
     }
   }, [photoUri, retake]);
 
-  // ── Permission screen ───────────────────────────────────
+  // -- Permission screen -----------------------------------------------------
 
   if (!permission) {
     return (
@@ -176,7 +169,9 @@ export default function ScanScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <Ionicons name="camera-outline" size={64} color={Colors.textTertiary} />
+          <View style={styles.permissionIconContainer}>
+            <Ionicons name="camera-outline" size={48} color={Colors.accent} />
+          </View>
           <Text style={styles.permissionTitle}>Camera access needed</Text>
           <Text style={styles.permissionText}>
             BillSplit needs camera access to scan receipts.
@@ -188,6 +183,7 @@ export default function ScanScreen() {
             ]}
             onPress={requestPermission}
           >
+            <Ionicons name="camera" size={18} color={Colors.textInverse} />
             <Text style={styles.permissionButtonText}>Allow camera</Text>
           </Pressable>
           <Pressable
@@ -203,7 +199,7 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Preview state ───────────────────────────────────────
+  // -- Preview state ---------------------------------------------------------
 
   if (state === 'preview' && photoUri) {
     return (
@@ -240,20 +236,20 @@ export default function ScanScreen() {
             onPress={handleUpload}
           >
             <Ionicons name="checkmark" size={20} color={Colors.textInverse} />
-            <Text style={styles.usePhotoText}>Use photo</Text>
+            <Text style={styles.usePhotoText}>Use Photo</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  // ── Uploading state ─────────────────────────────────────
+  // -- Uploading state -------------------------------------------------------
 
   if (state === 'uploading') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <View style={styles.progressRing}>
+          <View style={styles.progressIconContainer}>
             <ActivityIndicator color={Colors.accent} size="large" />
           </View>
           <Text style={styles.uploadingTitle}>Uploading receipt</Text>
@@ -273,13 +269,13 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Processing state ────────────────────────────────────
+  // -- Processing state ------------------------------------------------------
 
   if (state === 'processing') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <View style={styles.progressRing}>
+          <View style={styles.progressIconContainer}>
             <ActivityIndicator color={Colors.info} size="large" />
           </View>
           <Text style={styles.uploadingTitle}>Scanning receipt</Text>
@@ -291,14 +287,14 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Success state ───────────────────────────────────────
+  // -- Success state ---------------------------------------------------------
 
   if (state === 'success' && receiptId) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={72} color={Colors.positive} />
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={64} color={Colors.positive} />
           </View>
           <Text style={styles.successTitle}>Receipt scanned</Text>
           <Text style={styles.successSubtext}>
@@ -315,6 +311,7 @@ export default function ScanScreen() {
               retake();
             }}
           >
+            <Ionicons name="receipt-outline" size={18} color={Colors.textInverse} />
             <Text style={styles.viewReceiptText}>View receipt</Text>
           </Pressable>
 
@@ -326,13 +323,13 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Error state ─────────────────────────────────────────
+  // -- Error state -----------------------------------------------------------
 
   if (state === 'error') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <Ionicons name="alert-circle" size={72} color={Colors.negative} />
+          <Ionicons name="alert-circle" size={64} color={Colors.negative} />
           <Text style={styles.errorTitle}>Something went wrong</Text>
           <Text style={styles.errorSubtext}>
             {errorMessage ?? 'An unexpected error occurred.'}
@@ -364,10 +361,10 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Camera state (default) ──────────────────────────────
+  // -- Camera state (default) ------------------------------------------------
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.cameraScreen} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Scan Receipt</Text>
         {queueCount > 0 && (
@@ -384,7 +381,7 @@ export default function ScanScreen() {
           style={styles.camera}
           facing="back"
         >
-          {/* Corner frame overlay */}
+          {/* Green corner brackets */}
           <View style={styles.frameOverlay}>
             <View style={styles.cornerTopLeft} />
             <View style={styles.cornerTopRight} />
@@ -428,16 +425,19 @@ export default function ScanScreen() {
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────
+// -- Styles ------------------------------------------------------------------
 
-const CORNER_SIZE = 28;
+const CORNER_SIZE = 32;
 const CORNER_THICKNESS = 3;
-const CORNER_COLOR = Colors.accent;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  cameraScreen: {
+    flex: 1,
+    backgroundColor: Colors.black,
   },
   centered: {
     flex: 1,
@@ -454,23 +454,21 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: Colors.textInverse,
     letterSpacing: -0.5,
   },
 
-  // ── Queue badge ────────────────────────────────────────
+  // -- Queue badge -----------------------------------------------------------
   queueBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   queueBadgeText: {
     fontSize: 12,
@@ -478,7 +476,7 @@ const styles = StyleSheet.create({
     color: Colors.warning,
   },
 
-  // ── Camera ─────────────────────────────────────────────
+  // -- Camera ----------------------------------------------------------------
   cameraContainer: {
     flex: 1,
     marginHorizontal: 16,
@@ -490,11 +488,11 @@ const styles = StyleSheet.create({
   },
   frameOverlay: {
     ...StyleSheet.absoluteFillObject,
-    margin: 24,
+    margin: 28,
   },
   cameraHint: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 24,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -503,14 +501,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.white,
     fontWeight: '500',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     overflow: 'hidden',
   },
 
-  // ── Corner decorations ─────────────────────────────────
+  // -- Corner brackets (green) -----------------------------------------------
   cornerTopLeft: {
     position: 'absolute',
     top: 0,
@@ -519,8 +517,8 @@ const styles = StyleSheet.create({
     height: CORNER_SIZE,
     borderTopWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR,
-    borderTopLeftRadius: 6,
+    borderColor: Colors.accent,
+    borderTopLeftRadius: 8,
   },
   cornerTopRight: {
     position: 'absolute',
@@ -530,8 +528,8 @@ const styles = StyleSheet.create({
     height: CORNER_SIZE,
     borderTopWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR,
-    borderTopRightRadius: 6,
+    borderColor: Colors.accent,
+    borderTopRightRadius: 8,
   },
   cornerBottomLeft: {
     position: 'absolute',
@@ -541,8 +539,8 @@ const styles = StyleSheet.create({
     height: CORNER_SIZE,
     borderBottomWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR,
-    borderBottomLeftRadius: 6,
+    borderColor: Colors.accent,
+    borderBottomLeftRadius: 8,
   },
   cornerBottomRight: {
     position: 'absolute',
@@ -552,35 +550,42 @@ const styles = StyleSheet.create({
     height: CORNER_SIZE,
     borderBottomWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderColor: CORNER_COLOR,
-    borderBottomRightRadius: 6,
+    borderColor: Colors.accent,
+    borderBottomRightRadius: 8,
   },
 
-  // ── Actions bar ────────────────────────────────────────
+  // -- Actions bar -----------------------------------------------------------
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-    paddingBottom: 20,
+    paddingBottom: 24,
     paddingTop: 24,
     gap: 40,
   },
   captureButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
+    // Outer glow effect
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   captureButtonPressed: {
     backgroundColor: Colors.accentMuted,
+    shadowOpacity: 0.2,
   },
   captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     borderWidth: 3,
     borderColor: Colors.textInverse,
   },
@@ -588,20 +593,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   galleryButtonPressed: {
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   actionSpacer: {
     width: 48,
   },
 
-  // ── Preview ────────────────────────────────────────────
+  // -- Preview ---------------------------------------------------------------
   previewContainer: {
     flex: 1,
     marginHorizontal: 16,
@@ -617,9 +620,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 24,
     paddingTop: 24,
-    gap: 16,
+    gap: 12,
   },
   retakeButton: {
     flex: 1,
@@ -627,14 +630,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Colors.surfaceSecondary,
+    backgroundColor: Colors.background,
     paddingVertical: 16,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
   },
   retakeButtonPressed: {
-    backgroundColor: Colors.surfaceTertiary,
+    backgroundColor: Colors.surfacePrimary,
   },
   retakeText: {
     fontSize: 16,
@@ -660,8 +663,8 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
   },
 
-  // ── Upload progress ────────────────────────────────────
-  progressRing: {
+  // -- Upload progress -------------------------------------------------------
+  progressIconContainer: {
     marginBottom: 24,
   },
   uploadingTitle: {
@@ -671,8 +674,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   uploadingSubtext: {
-    fontSize: 16,
-    color: Colors.textSecondary,
+    fontSize: 18,
+    color: Colors.accent,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginBottom: 24,
   },
@@ -695,12 +699,20 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 
-  // ── Permission ─────────────────────────────────────────
+  // -- Permission ------------------------------------------------------------
+  permissionIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.accentSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   permissionTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginTop: 20,
     marginBottom: 8,
   },
   permissionText: {
@@ -711,9 +723,12 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   permissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: Colors.accent,
     paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     marginBottom: 16,
   },
@@ -735,8 +750,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Success ────────────────────────────────────────────
-  successIcon: {
+  // -- Success ---------------------------------------------------------------
+  successIconContainer: {
     marginBottom: 20,
   },
   successTitle: {
@@ -753,13 +768,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   viewReceiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: Colors.accent,
     paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     marginBottom: 12,
     width: '100%',
-    alignItems: 'center',
   },
   viewReceiptButtonPressed: {
     backgroundColor: Colors.accentMuted,
@@ -779,7 +797,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Error ──────────────────────────────────────────────
+  // -- Error -----------------------------------------------------------------
   errorTitle: {
     fontSize: 22,
     fontWeight: '700',
@@ -797,7 +815,7 @@ const styles = StyleSheet.create({
   retryButton: {
     backgroundColor: Colors.accent,
     paddingHorizontal: 32,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     marginBottom: 12,
     width: '100%',

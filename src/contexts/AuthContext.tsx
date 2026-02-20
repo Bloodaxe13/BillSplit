@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import * as Google from 'expo-auth-session/providers/google';
 import { supabase } from '../lib/supabase';
-import { signInWithGoogle, signInWithApple, signOut as authSignOut } from '../lib/auth';
+import { exchangeGoogleToken, signInWithApple, signOut as authSignOut } from '../lib/auth';
 import type { Profile } from '../types/database';
+
+const GOOGLE_CLIENT_ID = '990033290733-ta4v65o97oh7r6rhfer2sjpaonjnbhl3.apps.googleusercontent.com';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -41,6 +44,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Google OAuth via expo-auth-session (works in Expo Go)
+  const [_googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+  });
+
+  // Handle Google auth response when it arrives
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.params.id_token;
+      if (idToken) {
+        exchangeGoogleToken(idToken).catch(console.error);
+      }
+    }
+  }, [googleResponse]);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -104,6 +122,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await fetchProfile(session.user.id);
   }, [session, fetchProfile]);
 
+  const handleGoogleSignIn = useCallback(async () => {
+    await promptGoogleAsync();
+  }, [promptGoogleAsync]);
+
   const handleSignOut = useCallback(async () => {
     await authSignOut();
     setProfile(null);
@@ -121,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isAuthenticated: !!session?.user,
     needsOnboarding,
-    signInWithGoogle,
+    signInWithGoogle: handleGoogleSignIn,
     signInWithApple,
     signOut: handleSignOut,
     refreshProfile,
