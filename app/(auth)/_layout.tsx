@@ -11,7 +11,13 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="login" />
-      <Stack.Screen name="signup" />
+      <Stack.Screen
+        name="signup"
+        options={{
+          gestureEnabled: false,
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack>
   );
 }

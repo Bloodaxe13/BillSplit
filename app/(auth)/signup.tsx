@@ -1,82 +1,184 @@
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../src/constants/colors';
+import { useAuth } from '../../src/contexts/AuthContext';
 
-export default function SignupScreen() {
+const CURRENCIES = [
+  { code: 'AUD', label: 'AUD — Australian Dollar' },
+  { code: 'USD', label: 'USD — US Dollar' },
+  { code: 'EUR', label: 'EUR — Euro' },
+  { code: 'GBP', label: 'GBP — British Pound' },
+  { code: 'JPY', label: 'JPY — Japanese Yen' },
+  { code: 'CAD', label: 'CAD — Canadian Dollar' },
+  { code: 'NZD', label: 'NZD — New Zealand Dollar' },
+  { code: 'SGD', label: 'SGD — Singapore Dollar' },
+  { code: 'THB', label: 'THB — Thai Baht' },
+  { code: 'MYR', label: 'MYR — Malaysian Ringgit' },
+  { code: 'IDR', label: 'IDR — Indonesian Rupiah' },
+  { code: 'KRW', label: 'KRW — South Korean Won' },
+  { code: 'INR', label: 'INR — Indian Rupee' },
+  { code: 'CNY', label: 'CNY — Chinese Yuan' },
+  { code: 'HKD', label: 'HKD — Hong Kong Dollar' },
+];
+
+export default function OnboardingScreen() {
+  const { user, updateProfile } = useAuth();
+  const [displayName, setDisplayName] = useState(
+    user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? ''
+  );
+  const [selectedCurrency, setSelectedCurrency] = useState('AUD');
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleComplete() {
+    if (!displayName.trim()) {
+      setError('Please enter a display name');
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        display_name: displayName.trim(),
+        home_currency: selectedCurrency,
+      });
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to save profile');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const selectedCurrencyLabel = CURRENCIES.find(c => c.code === selectedCurrency)?.label ?? selectedCurrency;
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          {/* Branding */}
-          <View style={styles.brandingSection}>
-            <Text style={styles.appName}>BillSplit</Text>
-            <Text style={styles.tagline}>Create your account</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.welcomeIcon}>
+              <Ionicons name="hand-left-outline" size={36} color={Colors.accent} />
+            </View>
+            <Text style={styles.welcomeTitle}>Welcome!</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Let's get you set up. What should we call you?
+            </Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Display Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="What should we call you?"
-                placeholderTextColor={Colors.textTertiary}
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
+          {/* Error */}
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={18} color={Colors.negative} />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
+          ) : null}
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.textTertiary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+          {/* Display name */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Display Name</Text>
+            <TextInput
+              style={styles.input}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Your name"
+              placeholderTextColor={Colors.textTertiary}
+              autoCapitalize="words"
+              autoCorrect={false}
+              autoFocus
+            />
+          </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="At least 8 characters"
-                placeholderTextColor={Colors.textTertiary}
-                secureTextEntry
-              />
-            </View>
-
+          {/* Currency selector */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Home Currency</Text>
             <Pressable
               style={({ pressed }) => [
-                styles.signUpButton,
-                pressed && styles.signUpButtonPressed,
+                styles.currencySelector,
+                pressed && styles.currencySelectorPressed,
               ]}
+              onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}
             >
-              <Text style={styles.signUpButtonText}>Create Account</Text>
+              <Text style={styles.currencySelectorText}>{selectedCurrencyLabel}</Text>
+              <Ionicons
+                name={showCurrencyPicker ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={Colors.textSecondary}
+              />
             </Pressable>
+
+            {showCurrencyPicker ? (
+              <View style={styles.currencyList}>
+                {CURRENCIES.map(currency => (
+                  <Pressable
+                    key={currency.code}
+                    style={({ pressed }) => [
+                      styles.currencyOption,
+                      currency.code === selectedCurrency && styles.currencyOptionSelected,
+                      pressed && styles.currencyOptionPressed,
+                    ]}
+                    onPress={() => {
+                      setSelectedCurrency(currency.code);
+                      setShowCurrencyPicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.currencyOptionText,
+                        currency.code === selectedCurrency && styles.currencyOptionTextSelected,
+                      ]}
+                    >
+                      {currency.label}
+                    </Text>
+                    {currency.code === selectedCurrency ? (
+                      <Ionicons name="checkmark" size={20} color={Colors.accent} />
+                    ) : null}
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
           </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <Link href="/(auth)/login" asChild>
-              <Pressable>
-                <Text style={styles.footerLink}>Sign In</Text>
-              </Pressable>
-            </Link>
-          </View>
-
-          {/* Terms */}
-          <Text style={styles.terms}>
-            By creating an account, you agree to our Terms of Service and Privacy Policy.
-          </Text>
-        </View>
+          {/* Complete button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.completeButton,
+              pressed && styles.completeButtonPressed,
+              isSaving && styles.completeButtonDisabled,
+            ]}
+            onPress={handleComplete}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color={Colors.textInverse} />
+            ) : (
+              <Text style={styles.completeButtonText}>Get Started</Text>
+            )}
+          </Pressable>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -90,38 +192,62 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
+    paddingVertical: 40,
   },
-  brandingSection: {
+  header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
-  appName: {
-    fontSize: 40,
+  welcomeIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: Colors.accentSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  welcomeTitle: {
+    fontSize: 32,
     fontWeight: '800',
-    color: Colors.accent,
-    letterSpacing: -1,
+    color: Colors.textPrimary,
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
-  tagline: {
+  welcomeSubtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
-    letterSpacing: 0.2,
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  form: {
-    gap: 16,
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 82, 82, 0.10)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    gap: 10,
   },
-  inputGroup: {
-    gap: 6,
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.negative,
+    lineHeight: 20,
   },
-  inputLabel: {
+  field: {
+    marginBottom: 24,
+  },
+  fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: 4,
+    marginBottom: 8,
   },
   input: {
     backgroundColor: Colors.surfacePrimary,
@@ -133,41 +259,72 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  signUpButton: {
-    backgroundColor: Colors.accent,
+  currencySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfacePrimary,
     borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  currencySelectorPressed: {
+    backgroundColor: Colors.surfaceSecondary,
+  },
+  currencySelectorText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  currencyList: {
+    marginTop: 8,
+    backgroundColor: Colors.surfacePrimary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    maxHeight: 240,
+    overflow: 'hidden',
+  },
+  currencyOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.divider,
+  },
+  currencyOptionSelected: {
+    backgroundColor: Colors.accentSurface,
+  },
+  currencyOptionPressed: {
+    backgroundColor: Colors.surfaceSecondary,
+  },
+  currencyOptionText: {
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  currencyOptionTextSelected: {
+    color: Colors.accent,
+    fontWeight: '600',
+  },
+  completeButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  signUpButtonPressed: {
+  completeButtonPressed: {
     backgroundColor: Colors.accentMuted,
   },
-  signUpButtonText: {
+  completeButtonDisabled: {
+    opacity: 0.6,
+  },
+  completeButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textInverse,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 32,
-  },
-  footerText: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-  },
-  footerLink: {
-    fontSize: 15,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-  terms: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    marginTop: 24,
-    lineHeight: 18,
-    paddingHorizontal: 20,
   },
 });

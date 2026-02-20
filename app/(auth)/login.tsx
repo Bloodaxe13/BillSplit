@@ -1,98 +1,112 @@
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../src/constants/colors';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function LoginScreen() {
+  const { signInWithGoogle, signInWithApple } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isLoading = isGoogleLoading || isAppleLoading;
+
+  async function handleGoogleSignIn() {
+    setError(null);
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to sign in with Google');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }
+
+  async function handleAppleSignIn() {
+    setError(null);
+    setIsAppleLoading(true);
+    try {
+      await signInWithApple();
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to sign in with Apple');
+    } finally {
+      setIsAppleLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={styles.content}>
-          {/* Branding */}
-          <View style={styles.brandingSection}>
-            <Text style={styles.appName}>BillSplit</Text>
-            <Text style={styles.tagline}>
-              Split receipts, not friendships.
-            </Text>
+      <View style={styles.content}>
+        {/* Branding */}
+        <View style={styles.brandingSection}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="receipt-outline" size={48} color={Colors.accent} />
           </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.textTertiary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor={Colors.textTertiary}
-                secureTextEntry
-              />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.signInButton,
-                pressed && styles.signInButtonPressed,
-              ]}
-            >
-              <Text style={styles.signInButtonText}>Sign In</Text>
-            </Pressable>
-          </View>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Social login */}
-          <View style={styles.socialButtons}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.socialButton,
-                pressed && styles.socialButtonPressed,
-              ]}
-            >
-              <Text style={styles.socialButtonText}>Google</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.socialButton,
-                pressed && styles.socialButtonPressed,
-              ]}
-            >
-              <Text style={styles.socialButtonText}>Apple</Text>
-            </Pressable>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {"Don't have an account? "}
-            </Text>
-            <Link href="/(auth)/signup" asChild>
-              <Pressable>
-                <Text style={styles.footerLink}>Sign Up</Text>
-              </Pressable>
-            </Link>
-          </View>
+          <Text style={styles.appName}>BillSplit</Text>
+          <Text style={styles.tagline}>Split receipts, not friendships.</Text>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Error message */}
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={18} color={Colors.negative} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        {/* Social sign-in buttons */}
+        <View style={styles.authButtons}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.authButton,
+              styles.googleButton,
+              pressed && styles.authButtonPressed,
+              isLoading && styles.authButtonDisabled,
+            ]}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator size="small" color={Colors.textPrimary} />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={22} color={Colors.textPrimary} />
+                <Text style={styles.authButtonText}>Continue with Google</Text>
+              </>
+            )}
+          </Pressable>
+
+          {Platform.OS === 'ios' ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.authButton,
+                styles.appleButton,
+                pressed && styles.authButtonPressed,
+                isLoading && styles.authButtonDisabled,
+              ]}
+              onPress={handleAppleSignIn}
+              disabled={isLoading}
+            >
+              {isAppleLoading ? (
+                <ActivityIndicator size="small" color={Colors.textPrimary} />
+              ) : (
+                <>
+                  <Ionicons name="logo-apple" size={22} color={Colors.textPrimary} />
+                  <Text style={styles.authButtonText}>Continue with Apple</Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Terms */}
+        <Text style={styles.terms}>
+          By continuing, you agree to our Terms of Service and Privacy Policy.
+        </Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -102,9 +116,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  keyboardView: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
@@ -112,7 +123,18 @@ const styles = StyleSheet.create({
   },
   brandingSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 56,
+  },
+  logoContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: Colors.accentSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.accent,
   },
   appName: {
     fontSize: 40,
@@ -126,91 +148,58 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     letterSpacing: 0.2,
   },
-  form: {
-    gap: 16,
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 82, 82, 0.10)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    gap: 10,
   },
-  inputGroup: {
-    gap: 6,
-  },
-  inputLabel: {
+  errorText: {
+    flex: 1,
     fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginLeft: 4,
+    color: Colors.negative,
+    lineHeight: 20,
   },
-  input: {
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  authButtons: {
+    gap: 14,
   },
-  signInButton: {
-    backgroundColor: Colors.accent,
-    borderRadius: 12,
+  authButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  signInButtonPressed: {
-    backgroundColor: Colors.accentMuted,
-  },
-  signInButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.textInverse,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 28,
     gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-  },
-  socialButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-    backgroundColor: Colors.surfacePrimary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
     borderWidth: 1,
+  },
+  googleButton: {
+    backgroundColor: Colors.surfacePrimary,
     borderColor: Colors.border,
   },
-  socialButtonPressed: {
+  appleButton: {
+    backgroundColor: Colors.surfacePrimary,
+    borderColor: Colors.border,
+  },
+  authButtonPressed: {
     backgroundColor: Colors.surfaceSecondary,
   },
-  socialButtonText: {
-    fontSize: 15,
+  authButtonDisabled: {
+    opacity: 0.5,
+  },
+  authButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.textPrimary,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  terms: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    textAlign: 'center',
     marginTop: 32,
-  },
-  footerText: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-  },
-  footerLink: {
-    fontSize: 15,
-    color: Colors.accent,
-    fontWeight: '600',
+    lineHeight: 18,
+    paddingHorizontal: 20,
   },
 });

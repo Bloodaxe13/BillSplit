@@ -1,96 +1,215 @@
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, SectionList, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../src/constants/colors';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { fetchMyDebts, subscribeToAllDebts } from '../../src/services/debts';
+import { getExchangeRates } from '../../src/services/currency';
+import { DebtCard } from '../../src/components/debts/DebtCard';
+import { SettleUpModal } from '../../src/components/debts/SettleUpModal';
+import type { DebtWithMembers } from '../../src/types/database';
+import type { ExchangeRates } from '../../src/types/currency';
 
-interface ActivityItem {
-  id: string;
-  type: 'receipt_added' | 'item_claimed' | 'debt_settled';
-  description: string;
-  group: string;
-  timestamp: string;
+interface DebtWithGroup extends DebtWithMembers {
+  _group_name?: string;
 }
 
-const PLACEHOLDER_ACTIVITY: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'receipt_added',
-    description: 'Dan added a receipt from Warung Babi Guling',
-    group: 'Bali 2026',
-    timestamp: '2 min ago',
-  },
-  {
-    id: '2',
-    type: 'item_claimed',
-    description: 'Sarah claimed 3 items on "Sushi Train"',
-    group: 'Tokyo Weekend',
-    timestamp: '15 min ago',
-  },
-  {
-    id: '3',
-    type: 'debt_settled',
-    description: 'Mike settled $42.50 with you',
-    group: 'Flat Expenses',
-    timestamp: '1 hr ago',
-  },
-];
-
-function getActivityDot(type: ActivityItem['type']): string {
-  switch (type) {
-    case 'receipt_added':
-      return Colors.info;
-    case 'item_claimed':
-      return Colors.accent;
-    case 'debt_settled':
-      return Colors.positive;
-  }
-}
-
-interface ActivityCardProps {
-  item: ActivityItem;
-}
-
-function ActivityCard({ item }: ActivityCardProps) {
-  return (
-    <View style={styles.activityCard}>
-      <View
-        style={[styles.activityDot, { backgroundColor: getActivityDot(item.type) }]}
-      />
-      <View style={styles.activityContent}>
-        <Text style={styles.activityDescription}>{item.description}</Text>
-        <View style={styles.activityMeta}>
-          <Text style={styles.activityGroup}>{item.group}</Text>
-          <Text style={styles.activityDivider}>&middot;</Text>
-          <Text style={styles.activityTimestamp}>{item.timestamp}</Text>
-        </View>
-      </View>
-    </View>
-  );
+interface DebtSection {
+  title: string;
+  data: DebtWithGroup[];
 }
 
 export default function ActivityScreen() {
+  const { user } = useAuth();
+  const [debts, setDebts] = useState<DebtWithGroup[]>([]);
+  const [rates, setRates] = useState<ExchangeRates | null>(null);
+  const [myMemberIds, setMyMemberIds] = useState<string[]>([]);
+  const [homeCurrency, setHomeCurrency] = useState('USD');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [settleDebt, setSettleDebt] = useState<DebtWithMembers | null>(null);
+
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [fetchedDebts, fetchedRates] = await Promise.all([
+        fetchMyDebts(user.id),
+        getExchangeRates(),
+      ]);
+
+      // Extract member IDs for direction detection
+      const { supabase } = await import('../../src/lib/supabase');
+      const { data: memberships } = await supabase
+        .from('group_members')
+        .select('id')
+        .eq('user_id', user.id);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('home_currency')
+        .eq('id', user.id)
+        .single();
+
+      setMyMemberIds(memberships?.map((m) => m.id) ?? []);
+      setHomeCurrency(profile?.home_currency ?? 'USD');
+      setDebts(fetchedDebts);
+      setRates(fetchedRates);
+    } catch (err) {
+      // Silently handle errors for now — the UI shows empty state
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Realtime subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToAllDebts(() => {
+      loadData();
+    });
+    return unsubscribe;
+  }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  const handleSettle = useCallback((debtId: string) => {
+    const debt = debts.find((d) => d.id === debtId);
+    if (debt) setSettleDebt(debt);
+  }, [debts]);
+
+  const handleSettled = useCallback(() => {
+    setSettleDebt(null);
+    loadData();
+  }, [loadData]);
+
+  // Split debts into "You owe" and "Owed to you" sections, grouped by group
+  const sections = buildSections(debts, myMemberIds);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Activity</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Activity</Text>
       </View>
 
-      <FlatList
-        data={PLACEHOLDER_ACTIVITY}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ActivityCard item={item} />}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+          </View>
+        )}
+        renderItem={({ item }) => (
+          <DebtCard
+            debt={item}
+            myMemberIds={myMemberIds}
+            homeCurrency={homeCurrency}
+            rates={rates}
+            onSettle={handleSettle}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <Text style={styles.emptyTitle}>All settled up</Text>
             <Text style={styles.emptySubtitle}>
-              Activity from your groups will show up here.
+              No outstanding debts. Scan a receipt to get started.
             </Text>
           </View>
         }
+        ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+      />
+
+      <SettleUpModal
+        visible={settleDebt !== null}
+        debt={settleDebt}
+        homeCurrency={homeCurrency}
+        rates={rates}
+        onClose={() => setSettleDebt(null)}
+        onSettled={handleSettled}
       />
     </SafeAreaView>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildSections(
+  debts: DebtWithGroup[],
+  myMemberIds: string[]
+): DebtSection[] {
+  const youOwe: DebtWithGroup[] = [];
+  const owedToYou: DebtWithGroup[] = [];
+
+  for (const debt of debts) {
+    if (myMemberIds.includes(debt.from_member)) {
+      youOwe.push(debt);
+    } else {
+      owedToYou.push(debt);
+    }
+  }
+
+  // Group debts by group name within each section
+  const groupByGroup = (items: DebtWithGroup[]) => {
+    const groups = new Map<string, DebtWithGroup[]>();
+    for (const item of items) {
+      const name = item._group_name ?? 'Unknown';
+      const existing = groups.get(name) ?? [];
+      existing.push(item);
+      groups.set(name, existing);
+    }
+    return groups;
+  };
+
+  const sections: DebtSection[] = [];
+
+  if (youOwe.length > 0) {
+    const grouped = groupByGroup(youOwe);
+    for (const [groupName, items] of grouped) {
+      sections.push({ title: `You owe — ${groupName}`, data: items });
+    }
+  }
+
+  if (owedToYou.length > 0) {
+    const grouped = groupByGroup(owedToYou);
+    for (const [groupName, items] of grouped) {
+      sections.push({ title: `Owed to you — ${groupName}`, data: items });
+    }
+  }
+
+  return sections;
 }
 
 const styles = StyleSheet.create({
@@ -109,50 +228,28 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     letterSpacing: -0.5,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionHeader: {
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-    gap: 4,
   },
-  activityCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.divider,
-  },
-  activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
-    marginRight: 14,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityDescription: {
-    fontSize: 15,
-    color: Colors.textPrimary,
-    lineHeight: 21,
-    marginBottom: 4,
-  },
-  activityMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  activityGroup: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-  activityDivider: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-  },
-  activityTimestamp: {
-    fontSize: 13,
-    color: Colors.textTertiary,
+  itemSeparator: {
+    height: 10,
   },
   emptyState: {
     alignItems: 'center',

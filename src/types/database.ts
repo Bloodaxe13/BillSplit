@@ -40,6 +40,7 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   home_currency: string;
+  push_token: string | null;
   is_pro: boolean;
   scans_this_month: number;
   scans_reset_at: string;
@@ -99,6 +100,7 @@ export interface Receipt {
   /** Amount in smallest currency unit (cents) */
   total: number;
   tax_structure: TaxStructure | null;
+  vendor_name: string | null;
   image_url: string | null;
   ocr_raw: Record<string, unknown> | null;
   processing_status: ReceiptProcessingStatus;
