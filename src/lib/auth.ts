@@ -2,20 +2,44 @@ import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from './supabase';
 
 // Ensure the web browser auth session is completed when returning to the app
 WebBrowser.maybeCompleteAuthSession();
 
 /**
- * Exchange a Google ID token (from expo-auth-session) for a Supabase session.
+ * Sign in with Google using Supabase OAuth + WebBrowser.
+ * Supabase handles the Google redirect (HTTPS), then redirects back to our app.
+ * This works in Expo Go because Google only sees the Supabase callback URL.
  */
-export async function exchangeGoogleToken(idToken: string) {
-  const { error } = await supabase.auth.signInWithIdToken({
+export async function signInWithGoogle() {
+  const redirectTo = makeRedirectUri();
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    token: idToken,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
   });
+
   if (error) throw error;
+  if (!data?.url) throw new Error('No OAuth URL returned');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+  if (result.type === 'success') {
+    const url = new URL(result.url);
+    // Supabase puts tokens in the URL fragment
+    const params = new URLSearchParams(url.hash.substring(1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+
+    if (access_token && refresh_token) {
+      await supabase.auth.setSession({ access_token, refresh_token });
+    }
+  }
 }
 
 /**

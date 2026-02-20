@@ -1,13 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import * as Google from 'expo-auth-session/providers/google';
 import { supabase } from '../lib/supabase';
-import { exchangeGoogleToken, signInWithApple, signOut as authSignOut } from '../lib/auth';
+import { signInWithGoogle as googleSignIn, signInWithApple, signOut as authSignOut } from '../lib/auth';
 import type { Profile } from '../types/database';
-
-const GOOGLE_WEB_CLIENT_ID = '990033290733-ta4v65o97oh7r6rhfer2sjpaonjnbhl3.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '990033290733-dkvnuj6q8m61haeag45cmgf9sg8nbga6.apps.googleusercontent.com';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -46,21 +42,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Google OAuth via expo-auth-session (works in Expo Go)
-  const [_googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-  });
-
-  // Handle Google auth response when it arrives
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const idToken = googleResponse.params.id_token;
-      if (idToken) {
-        exchangeGoogleToken(idToken).catch(console.error);
-      }
-    }
-  }, [googleResponse]);
+  // Google OAuth handled via Supabase OAuth + WebBrowser (works in Expo Go)
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -125,8 +107,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [session, fetchProfile]);
 
   const handleGoogleSignIn = useCallback(async () => {
-    await promptGoogleAsync();
-  }, [promptGoogleAsync]);
+    await googleSignIn();
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     await authSignOut();
