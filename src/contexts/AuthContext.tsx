@@ -53,6 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     if (error) {
       // Profile might not exist yet if trigger hasn't fired
+      console.error('AuthContext: Failed to fetch profile:', error.message);
       setProfile(null);
       return null;
     }
@@ -68,6 +69,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (initialSession?.user) {
         await fetchProfile(initialSession.user.id);
       }
+      setIsLoading(false);
+    }).catch((err) => {
+      console.error('AuthContext: Failed to get initial session:', err);
       setIsLoading(false);
     });
 
@@ -97,9 +101,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const updateProfile = useCallback(async (updates: { display_name?: string; home_currency?: string }) => {
     if (!session?.user) throw new Error('Not authenticated');
 
+    // Use upsert so this works even if the profile trigger hasn't fired yet
     const { error } = await supabase
       .from('profiles')
-      .update(updates)
+      .upsert({
+        id: session.user.id,
+        email: session.user.email ?? '',
+        ...updates,
+      })
       .eq('id', session.user.id);
 
     if (error) throw error;
@@ -115,7 +124,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setProfile(null);
   }, []);
 
-  const needsOnboarding = !!session?.user && !!profile && (
+  // Treat null profile (trigger hasn't fired yet) as needing onboarding,
+  // as well as a profile with missing display_name or home_currency.
+  const needsOnboarding = !!session?.user && (
+    !profile ||
     !profile.display_name || profile.display_name === '' ||
     !profile.home_currency || profile.home_currency === ''
   );

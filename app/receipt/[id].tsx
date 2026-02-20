@@ -114,7 +114,8 @@ export default function ReceiptDetailScreen() {
       try {
         await createClaim(lineItemId, memberId);
         await loadData();
-      } catch {
+      } catch (err) {
+        console.error('ReceiptScreen: Failed to create claim:', err);
         await loadData();
       }
     },
@@ -126,7 +127,8 @@ export default function ReceiptDetailScreen() {
       try {
         await deleteClaimByMember(lineItemId, memberId);
         await loadData();
-      } catch {
+      } catch (err) {
+        console.error('ReceiptScreen: Failed to delete claim:', err);
         await loadData();
       }
     },

@@ -16,6 +16,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -26,12 +27,15 @@ import { Colors } from '../../src/constants/colors';
 import { uploadReceipt, subscribeToReceiptStatus } from '../../src/services/receipts';
 import { enqueue, getPendingCount } from '../../src/services/offline-queue';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { fetchMyGroups, fetchMyMembership } from '../../src/services/groups';
+import type { GroupPreview, GroupMember } from '../../src/types/database';
 
 // -- Types -------------------------------------------------------------------
 
 type ScreenState =
   | 'camera'
   | 'preview'
+  | 'select-group'
   | 'uploading'
   | 'processing'
   | 'success'
@@ -51,8 +55,58 @@ export default function ScanScreen() {
   const [queueCount, setQueueCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Group selection state
+  const [groups, setGroups] = useState<GroupPreview[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [membership, setMembership] = useState<GroupMember | null>(null);
+
+  // Fetch user's groups on mount
   useEffect(() => {
-    getPendingCount().then(setQueueCount).catch(() => {});
+    let mounted = true;
+    async function loadGroups() {
+      try {
+        const myGroups = await fetchMyGroups();
+        if (!mounted) return;
+        setGroups(myGroups);
+        // Auto-select if the user has exactly one group
+        if (myGroups.length === 1) {
+          setSelectedGroupId(myGroups[0].id);
+        }
+      } catch (err) {
+        console.error('ScanScreen: Failed to load groups:', err);
+      } finally {
+        if (mounted) setGroupsLoading(false);
+      }
+    }
+    loadGroups();
+    return () => { mounted = false; };
+  }, []);
+
+  // Fetch membership when a group is selected
+  useEffect(() => {
+    if (!selectedGroupId) {
+      setMembership(null);
+      return;
+    }
+    let mounted = true;
+    async function loadMembership() {
+      try {
+        const member = await fetchMyMembership(selectedGroupId!);
+        if (mounted) setMembership(member);
+      } catch (err) {
+        console.error('ScanScreen: Failed to load membership:', err);
+        if (mounted) setMembership(null);
+      }
+    }
+    loadMembership();
+    return () => { mounted = false; };
+  }, [selectedGroupId]);
+
+  useEffect(() => {
+    getPendingCount().then(setQueueCount).catch((err) => {
+      console.error('ScanScreen: Failed to get pending queue count:', err);
+    });
   }, []);
 
   // -- Camera capture --------------------------------------------------------
@@ -97,11 +151,11 @@ export default function ScanScreen() {
 
   // -- Upload ----------------------------------------------------------------
 
-  const handleUpload = useCallback(async () => {
-    if (!photoUri) return;
+  const startUpload = useCallback(async () => {
+    if (!photoUri || !selectedGroupId || !membership) return;
 
-    const groupId = 'PLACEHOLDER_GROUP_ID';
-    const paidBy = 'PLACEHOLDER_MEMBER_ID';
+    const groupId = selectedGroupId;
+    const paidBy = membership.id;
 
     setState('uploading');
     setUploadProgress(0);
@@ -132,6 +186,7 @@ export default function ScanScreen() {
         unsubscribe();
       }, 60_000);
     } catch (err) {
+      console.error('ScanScreen: Receipt upload failed:', err);
       try {
         await enqueue({
           localUri: photoUri,
@@ -144,14 +199,36 @@ export default function ScanScreen() {
           'The receipt has been saved and will upload when you have a connection.',
           [{ text: 'OK', onPress: retake }],
         );
-      } catch {
+      } catch (enqueueErr) {
+        console.error('ScanScreen: Failed to enqueue receipt for offline upload:', enqueueErr);
         setState('error');
         setErrorMessage(
           err instanceof Error ? err.message : 'Upload failed. Please try again.',
         );
       }
     }
-  }, [photoUri, retake]);
+  }, [photoUri, selectedGroupId, membership, retake]);
+
+  // -- Proceed to upload (with group selection if needed) -------------------
+
+  const handleUsePhoto = useCallback(() => {
+    if (!photoUri) return;
+    if (groupsLoading) return;
+    if (groups.length === 0) {
+      Alert.alert(
+        'No groups',
+        'You need to join or create a group before scanning a receipt.',
+      );
+      return;
+    }
+    // Auto-select single group and membership ready -- skip picker
+    if (groups.length === 1 && selectedGroupId && membership) {
+      startUpload();
+      return;
+    }
+    // Multiple groups or membership still loading -- show selection screen
+    setState('select-group');
+  }, [photoUri, groups, groupsLoading, selectedGroupId, membership, startUpload]);
 
   // -- Permission screen -----------------------------------------------------
 
@@ -231,12 +308,101 @@ export default function ScanScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.usePhotoButton,
-              pressed && styles.usePhotoButtonPressed,
+              groupsLoading && styles.buttonDisabled,
+              pressed && !groupsLoading && styles.usePhotoButtonPressed,
             ]}
-            onPress={handleUpload}
+            onPress={handleUsePhoto}
+            disabled={groupsLoading}
           >
-            <Ionicons name="checkmark" size={20} color={Colors.textInverse} />
-            <Text style={styles.usePhotoText}>Use Photo</Text>
+            {groupsLoading ? (
+              <ActivityIndicator color={Colors.textInverse} size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={20} color={Colors.textInverse} />
+                <Text style={styles.usePhotoText}>Use Photo</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // -- Group selection state -------------------------------------------------
+
+  if (state === 'select-group') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: Colors.textPrimary }]}>Select group</Text>
+        </View>
+
+        <ScrollView
+          style={styles.groupList}
+          contentContainerStyle={styles.groupListContent}
+        >
+          {groups.map((group) => {
+            const isSelected = selectedGroupId === group.id;
+            return (
+              <Pressable
+                key={group.id}
+                style={({ pressed }) => [
+                  styles.groupItem,
+                  isSelected && styles.groupItemSelected,
+                  pressed && styles.groupItemPressed,
+                ]}
+                onPress={() => setSelectedGroupId(group.id)}
+              >
+                <View style={styles.groupItemInfo}>
+                  <Text style={[
+                    styles.groupItemName,
+                    isSelected && styles.groupItemNameSelected,
+                  ]}>
+                    {group.name}
+                  </Text>
+                  <Text style={styles.groupItemMeta}>
+                    {group.member_count} member{group.member_count !== 1 ? 's' : ''}
+                    {' · '}
+                    {group.default_currency}
+                  </Text>
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark-circle" size={24} color={Colors.accent} />
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.previewActions}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retakeButton,
+              pressed && styles.retakeButtonPressed,
+            ]}
+            onPress={() => setState('preview')}
+          >
+            <Ionicons name="arrow-back-outline" size={20} color={Colors.textPrimary} />
+            <Text style={styles.retakeText}>Back</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.usePhotoButton,
+              (!selectedGroupId || !membership) && styles.buttonDisabled,
+              pressed && selectedGroupId && membership ? styles.usePhotoButtonPressed : undefined,
+            ]}
+            onPress={startUpload}
+            disabled={!selectedGroupId || !membership}
+          >
+            {!membership && selectedGroupId ? (
+              <ActivityIndicator color={Colors.textInverse} size="small" />
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={20} color={Colors.textInverse} />
+                <Text style={styles.usePhotoText}>Upload</Text>
+              </>
+            )}
           </Pressable>
         </View>
       </SafeAreaView>
@@ -828,5 +994,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textInverse,
+  },
+
+  // -- Group selection -------------------------------------------------------
+  groupList: {
+    flex: 1,
+  },
+  groupListContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 10,
+  },
+  groupItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfacePrimary,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  groupItemSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentSurface,
+  },
+  groupItemPressed: {
+    backgroundColor: Colors.surfaceSecondary,
+  },
+  groupItemInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  groupItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  groupItemNameSelected: {
+    color: Colors.accentMuted,
+  },
+  groupItemMeta: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });

@@ -103,7 +103,8 @@ export default function ProfileScreen() {
           try {
             await signOut();
             router.replace('/(auth)/login');
-          } catch {
+          } catch (err) {
+            console.error('ProfileScreen: Sign out failed:', err);
             Alert.alert('Error', 'Failed to sign out. Please try again.');
           } finally {
             setIsSigningOut(false);
@@ -119,7 +120,8 @@ export default function ProfileScreen() {
     try {
       await updateProfile({ display_name: nameValue.trim() });
       setEditingName(false);
-    } catch {
+    } catch (err) {
+      console.error('ProfileScreen: Failed to update display name:', err);
       Alert.alert('Error', 'Failed to update display name.');
     } finally {
       setIsSaving(false);
@@ -131,7 +133,8 @@ export default function ProfileScreen() {
     try {
       await updateProfile({ home_currency: code });
       setEditingCurrency(false);
-    } catch {
+    } catch (err) {
+      console.error('ProfileScreen: Failed to update currency:', err);
       Alert.alert('Error', 'Failed to update currency.');
     } finally {
       setIsSaving(false);

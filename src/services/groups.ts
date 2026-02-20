@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
 import type {
   Group,
@@ -14,7 +15,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 /** Generate a 12-character hex invite code. */
 function generateInviteCode(): string {
   const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
+  Crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 

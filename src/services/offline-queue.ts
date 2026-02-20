@@ -143,8 +143,8 @@ async function removeItem(id: number, localUri: string): Promise<void> {
     if (file.exists) {
       file.delete();
     }
-  } catch {
-    // Non-critical — the file will be cleaned up eventually
+  } catch (err) {
+    console.error('OfflineQueue: Failed to clean up local file:', err);
   }
 }
 
@@ -177,7 +177,8 @@ export async function processQueue(
       await uploadFn(item);
       await removeItem(item.id, item.localUri);
       processed++;
-    } catch {
+    } catch (err) {
+      console.error('OfflineQueue: Failed to process queue item:', err);
       await markFailed(item.id);
       failed++;
     }
@@ -198,8 +199,8 @@ export async function clearQueue(): Promise<void> {
     try {
       const file = new File(item.local_uri);
       if (file.exists) file.delete();
-    } catch {
-      // Ignore cleanup errors
+    } catch (err) {
+      console.error('OfflineQueue: Failed to clean up file during queue clear:', err);
     }
   }
 

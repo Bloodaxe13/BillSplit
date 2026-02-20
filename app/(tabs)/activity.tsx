@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, SectionList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, SectionList, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../src/constants/colors';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -28,11 +28,13 @@ export default function ActivityScreen() {
   const [homeCurrency, setHomeCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const [settleDebt, setSettleDebt] = useState<DebtWithMembers | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
+      setError(false);
       const [fetchedDebts, fetchedRates] = await Promise.all([
         fetchMyDebts(user.id),
         getExchangeRates(),
@@ -56,7 +58,8 @@ export default function ActivityScreen() {
       setDebts(fetchedDebts);
       setRates(fetchedRates);
     } catch (err) {
-      // Silently handle errors for now — the UI shows empty state
+      console.error('ActivityScreen: Failed to load debts:', err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -101,6 +104,34 @@ export default function ActivityScreen() {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Activity</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorSubtitle}>
+            Could not load your activity. Please try again.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.retryButtonPressed,
+            ]}
+            onPress={() => {
+              setLoading(true);
+              loadData();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -285,5 +316,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  errorSubtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  retryButtonPressed: {
+    backgroundColor: Colors.accentMuted,
+  },
+  retryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textInverse,
   },
 });

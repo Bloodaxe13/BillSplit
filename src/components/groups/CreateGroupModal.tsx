@@ -78,8 +78,8 @@ export function CreateGroupModal({
       await Share.share({
         message: `Join my BillSplit group "${createdGroup.name}"!\n\n${link}`,
       });
-    } catch {
-      // User cancelled share
+    } catch (err) {
+      console.error('CreateGroupModal: Share invite failed:', err);
     }
   }
 

@@ -29,15 +29,22 @@ export async function signInWithGoogle() {
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-  if (result.type === 'success') {
-    const url = new URL(result.url);
-    // Supabase puts tokens in the URL fragment
-    const params = new URLSearchParams(url.hash.substring(1));
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
+  if (result.type === 'success' && result.url) {
+    try {
+      const url = new URL(result.url);
+      const hash = url.hash;
+      if (hash && hash.length > 1) {
+        // Supabase puts tokens in the URL fragment
+        const params = new URLSearchParams(hash.substring(1));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
 
-    if (access_token && refresh_token) {
-      await supabase.auth.setSession({ access_token, refresh_token });
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        }
+      }
+    } catch (err) {
+      console.error('Auth: Failed to process auth callback URL:', err);
     }
   }
 }

@@ -70,8 +70,10 @@ serve(async (req: Request): Promise<Response> => {
     const fetchedAt = new Date(data.timestamp * 1000).toISOString();
 
     // Upsert into exchange_rates table.
-    // We use base_currency as the conflict target so there is only ever one
-    // row per base currency (USD for the free tier of Open Exchange Rates).
+    // The unique constraint is (base_currency, fetched_date), so we include
+    // fetched_date to match. This gives us one row per base per day.
+    const fetchedDate = fetchedAt.slice(0, 10); // "YYYY-MM-DD"
+
     const { error: upsertError } = await supabase
       .from("exchange_rates")
       .upsert(
@@ -79,8 +81,9 @@ serve(async (req: Request): Promise<Response> => {
           base_currency: data.base,
           rates: data.rates,
           fetched_at: fetchedAt,
+          fetched_date: fetchedDate,
         },
-        { onConflict: "base_currency" }
+        { onConflict: "base_currency,fetched_date" }
       );
 
     if (upsertError) {

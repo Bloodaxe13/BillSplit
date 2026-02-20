@@ -62,8 +62,8 @@ export default function GroupDetailScreen() {
       setReceipts(receiptsData);
       setBalances(balancesData);
       setMyMembership(membership);
-    } catch {
-      // Failed to load data
+    } catch (err) {
+      console.error('GroupScreen: Failed to load group data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -77,8 +77,12 @@ export default function GroupDetailScreen() {
   useEffect(() => {
     if (!id) return;
     const channel = subscribeToGroupMembers(id, () => {
-      fetchGroupMembers(id).then(setMembers).catch(() => {});
-      fetchGroupBalances(id).then(setBalances).catch(() => {});
+      fetchGroupMembers(id).then(setMembers).catch((err) => {
+        console.error('GroupScreen: Failed to refresh members:', err);
+      });
+      fetchGroupBalances(id).then(setBalances).catch((err) => {
+        console.error('GroupScreen: Failed to refresh balances:', err);
+      });
     });
     return () => {
       channel.unsubscribe();
@@ -98,8 +102,8 @@ export default function GroupDetailScreen() {
       await Share.share({
         message: `Join my BillSplit group "${group.name}"!\n\n${link}`,
       });
-    } catch {
-      // User cancelled share
+    } catch (err) {
+      console.error('GroupScreen: Share invite failed:', err);
     }
   }
 

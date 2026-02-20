@@ -23,6 +23,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadGroups = useCallback(async () => {
     if (!isAuthenticated) {
@@ -31,10 +32,12 @@ export default function HomeScreen() {
       return;
     }
     try {
+      setError(false);
       const data = await fetchMyGroups();
       setGroups(data);
-    } catch {
-      // Silently fail — groups will show as empty
+    } catch (err) {
+      console.error('HomeScreen: Failed to load groups:', err);
+      setError(true);
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +65,34 @@ export default function HomeScreen() {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Your Groups</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorSubtitle}>
+            Could not load your groups. Please try again.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.retryButtonPressed,
+            ]}
+            onPress={() => {
+              setIsLoading(true);
+              loadGroups();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -206,6 +237,39 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentMuted,
   },
   emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textInverse,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  errorSubtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  retryButtonPressed: {
+    backgroundColor: Colors.accentMuted,
+  },
+  retryButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: Colors.textInverse,

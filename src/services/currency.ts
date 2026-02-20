@@ -138,7 +138,7 @@ let cachedRates: ExchangeRates | null = null;
  * Results are cached in-memory for the lifetime of the session so
  * subsequent calls are free.
  */
-export async function getExchangeRates(): Promise<ExchangeRates> {
+export async function getExchangeRates(): Promise<ExchangeRates | null> {
   if (cachedRates) {
     return cachedRates;
   }
@@ -151,9 +151,7 @@ export async function getExchangeRates(): Promise<ExchangeRates> {
     .single();
 
   if (error || !data) {
-    throw new Error(
-      `Failed to fetch exchange rates: ${error?.message ?? "no data returned"}`
-    );
+    return null;
   }
 
   cachedRates = {
