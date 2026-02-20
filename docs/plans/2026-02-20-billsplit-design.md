@@ -123,7 +123,8 @@ Supabase RLS ensures users can only read/write data for groups they belong to. L
 1. Payer taps "Add Receipt" → camera opens → snaps photo
 2. If offline: photo queued locally, "Processing when online" indicator shown
 3. If online: processing pipeline runs (3-8 seconds) → line items appear
-4. Payer reviews extracted items, fixes any OCR errors, confirms total matches
+4. Validation step: extracted total displayed alongside receipt image — payer confirms the total matches before the group can start claiming
+5. Payer reviews extracted items, fixes any OCR errors
 
 ### 4.3 Claim Your Items (Group Member View)
 
@@ -227,6 +228,7 @@ Every travel group has one organizer — the person uploading receipts, assignin
 - Tax/tip/service fee interpretation and proportional splitting
 - Tap-to-claim checkbox UI (1x default)
 - Payer assignment view
+- Receipt validation step (extracted total shown against receipt image for payer confirmation before group claiming begins)
 - Running debt tracker per group with "mark as settled"
 - Multi-currency with live conversion rates
 - Smart nudge push notifications
@@ -242,6 +244,7 @@ Every travel group has one organizer — the person uploading receipts, assignin
 - Receipt history and search
 - Payment provider integration (Venmo, Wise) with transaction fees
 - Trip spending analytics (Pro)
+- Comment thread per receipt (resolve "who had the extra side?" without leaving the app)
 
 ### Tier 3 — Future
 
@@ -251,6 +254,10 @@ Every travel group has one organizer — the person uploading receipts, assignin
 - Recurring expense splitting (flatmate use case)
 - Group spending insights and trends
 - Receipt archive management
+- Dispute resolution flow (flag an item assignment, notify payer to review)
+- Receipt co-ownership (split-payer receipts — two people pay one bill)
+- Smart claim suggestions (learn patterns from past behavior, pre-suggest claims)
+- Deep link invite flow (app deep-link if installed, web fallback if not)
 
 ### Success Metrics for MVP
 
