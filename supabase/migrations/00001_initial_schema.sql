@@ -7,6 +7,9 @@
 -- (e.g., cents for USD) to avoid floating-point precision issues.
 -- =============================================================================
 
+-- Enable pgcrypto for gen_random_bytes (used by invite_code default)
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- ---------------------------------------------------------------------------
 -- 1. PROFILES — extends Supabase auth.users with app-specific fields
 -- ---------------------------------------------------------------------------
@@ -35,7 +38,7 @@ CREATE TABLE public.groups (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name             TEXT NOT NULL,
   created_by       UUID NOT NULL REFERENCES public.profiles(id),
-  invite_code      TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(6), 'hex'),
+  invite_code      TEXT NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(6), 'hex'),
   default_currency TEXT NOT NULL DEFAULT 'USD',
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -162,8 +165,9 @@ CREATE TABLE public.exchange_rates (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   base_currency TEXT NOT NULL DEFAULT 'USD',
   rates         JSONB NOT NULL,
+  fetched_date  DATE NOT NULL DEFAULT CURRENT_DATE,
   fetched_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(base_currency, (fetched_at::date))
+  UNIQUE(base_currency, fetched_date)
 );
 
 COMMENT ON TABLE public.exchange_rates IS 'Daily cached exchange rates from an external provider';

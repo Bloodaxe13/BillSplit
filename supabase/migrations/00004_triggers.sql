@@ -12,13 +12,13 @@
 --    corresponding public.profiles row via handle_new_user().
 -- =============================================================================
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
-COMMENT ON TRIGGER on_auth_user_created ON auth.users IS
-  'Auto-create a public.profiles row when a user signs up';
+-- Note: COMMENT ON TRIGGER omitted because we don't own auth.users
 
 
 -- =============================================================================
